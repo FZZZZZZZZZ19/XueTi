@@ -48,7 +48,64 @@ object DeepSeekClient {
         val available: Boolean
     )
 
+    /** 纯文本问答结果（翻译 / 造句等） */
+    data class AskResult(val text: String, val usage: Usage?)
+
+    /** 翻译方向 */
+    enum class TranslateDirection(val label: String, val instruction: String) {
+        AUTO("自动识别", "如果原文是中文就翻译成地道的英文，如果是英文就翻译成中文"),
+        ZH_TO_EN("中 → 英", "把下面的中文翻译成地道的英文"),
+        EN_TO_ZH("英 → 中", "把下面的英文翻译成中文")
+    }
+
     private data class ChatResult(val text: String, val usage: Usage?)
+
+    // ---------------- 通用文本问答 ----------------
+
+    /** 通用问答（非 JSON 输出），供翻译、造句等使用 */
+    suspend fun ask(apiKey: String, model: String, prompt: String): Result<AskResult> = runCatching {
+        val result = chat(apiKey, model, prompt, jsonMode = false).getOrThrow()
+        if (result.text.isBlank()) error("模型没有返回内容")
+        AskResult(result.text, result.usage)
+    }
+
+    /** 中英互翻 */
+    suspend fun translate(
+        apiKey: String,
+        model: String,
+        text: String,
+        direction: TranslateDirection
+    ): Result<AskResult> = ask(
+        apiKey,
+        model,
+        buildString {
+            append("你是专业翻译。请").append(direction.instruction).append("。\n")
+            append("要求：\n")
+            append("1) 只输出译文，不要任何解释或前后缀；\n")
+            append("2) 如果是单词，请补充词性与常见义项（用「；」分隔）；\n")
+            append("3) 保留原有的专有名词、数字与换行格式；\n")
+            append("4) 若有多义，最多列出 3 个最常用的译法。\n\n")
+            append("【原文】\n").append(text.trim())
+        }
+    )
+
+    /** AI 造句：为某个单词生成例句（含中文翻译与搭配总结） */
+    suspend fun generateSentences(
+        apiKey: String,
+        model: String,
+        word: String
+    ): Result<AskResult> = ask(
+        apiKey,
+        model,
+        buildString {
+            append("你是英语老师。请用单词「").append(word.trim()).append("」造 3 个地道的例句。\n")
+            append("要求：\n")
+            append("1) 每句先给英文，再在下一行给出中文翻译；\n")
+            append("2) 难度适合大学英语六级，句子体现该词最常见的搭配；\n")
+            append("3) 三句分别对应不同的词性/义项（如该词只有一种，则体现不同语境）；\n")
+            append("4) 最后用「搭配提示：」总结常见搭配与易错点（一句话）。\n")
+        }
+    )
 
     // ---------------- 可用模型列表 ----------------
 

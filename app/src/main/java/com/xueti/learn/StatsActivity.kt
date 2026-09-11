@@ -13,6 +13,7 @@ import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.databinding.ActivityStatsBinding
 import com.xueti.learn.model.Familiarity
+import com.xueti.learn.util.GoalCountEditor
 import com.xueti.learn.util.GoalEditor
 import java.util.Calendar
 
@@ -267,6 +268,8 @@ class StatsActivity : BaseActivity() {
             getString(R.string.goal_rest_day)
         )
         options.addAll(GOAL_OPTIONS.map { getString(R.string.goal_words, it) })
+        options.add(getString(R.string.goal_custom_count))
+        val customIndex = options.lastIndex
 
         AlertDialog.Builder(this)
             .setTitle(date)
@@ -285,6 +288,19 @@ class StatsActivity : BaseActivity() {
                     }
                     1 -> store.setCustomGoal(date, null)
                     2 -> store.setCustomGoal(date, 0)
+                    customIndex -> {
+                        // 自定义该日练词数量
+                        GoalCountEditor.show(
+                            activity = this,
+                            title = getString(R.string.goal_custom_count),
+                            initial = currentGoal,
+                            allowZero = true
+                        ) { value ->
+                            store.setCustomGoal(date, value)
+                            renderAll()
+                        }
+                        return@setItems
+                    }
                     else -> store.setCustomGoal(date, GOAL_OPTIONS[which - 3])
                 }
                 Toast.makeText(this, R.string.stats_goal_saved, Toast.LENGTH_SHORT).show()

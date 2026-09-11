@@ -64,14 +64,20 @@ class MainActivity : BaseActivity() {
         renderHubSummary()
     }
 
-    /** 六级学习卡片副标题：今日进度概况 */
+    /** 六级学习卡片副标题：今日进度概况 + 需复习词数 */
     private fun renderHubSummary() {
         val goal = store.dailyGoalFor(store.today())
         val today = store.todayLearnedCount()
-        binding.hubSummary.text = when {
+        val base = when {
             goal <= 0 -> getString(R.string.rest_day_title)
             today >= goal -> getString(R.string.hub_summary_done, today)
             else -> getString(R.string.hub_summary, today, goal)
+        }
+        val reviewCount = store.reviewWords().size
+        binding.hubSummary.text = if (reviewCount > 0) {
+            getString(R.string.hub_summary_review, base, reviewCount)
+        } else {
+            base
         }
     }
 

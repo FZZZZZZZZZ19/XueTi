@@ -24,5 +24,7 @@ data class LearnRecord(
     val word: String,
     val familiarity: Familiarity,
     val firstLearnedAt: Long,
-    val reviewCount: Int = 1
+    val reviewCount: Int = 1,
+    /** 复习时连续答对的次数（达到 2 次即视为掌握） */
+    val reviewCorrect: Int = 0
 )

@@ -199,6 +199,7 @@
     <string name="study_hub_title">六级学习</string>
     <string name="hub_summary">今日 %1$d/%2$d 词</string>
     <string name="hub_summary_done">今日已完成 %1$d 词</string>
+    <string name="hub_summary_review">%1$s\n需复习 %2$d 词</string>
     <string name="word_list_title_with_count">我的词库（%1$d 词）</string>
     <string name="stats_known_rate_short">认识 %1$d · 需复习 %2$d</string>
     <string name="stats_known_rate_label">认识率</string>
@@ -301,4 +302,47 @@
     <string name="balance_detail_insufficient">⚠ 余额不足，请及时充值（赠送 ¥%1$s · 充值 ¥%2$s）</string>
     <string name="balance_failed">查询失败：%1$s</string>
     <string name="balance_tap_hint">点击「账户余额」可刷新</string>
+
+    <!-- v1.8：自定义每日词数 / 独立复习 / 词典 / AI 翻译造句 -->
+    <string name="daily_goal_hint">每日练词数量</string>
+    <string name="goal_custom_count">自定义数量…</string>
+    <string name="daily_goal_value">%1$d 个/天</string>
+    <string name="daily_goal_edit_hint">点击自定义每天要练的单词数量</string>
+    <string name="daily_goal_tip">手动输入每天要练的单词数量，也可点下面的常用数量快速选择</string>
+    <string name="daily_goal_tip_range">可填 %1$d - %2$d（%1$d 为最少，%2$d 为最多）</string>
+
+    <string name="review_title">复习需复习的词</string>
+    <string name="review_title_count">复习需复习的 %1$d 个词</string>
+    <string name="review_none">暂时没有需要复习的词，先去学新词吧～</string>
+    <string name="review_rule_hint">连续答对 2 次才算掌握，答对后自动摘掉「需复习」标记</string>
+    <string name="review_start">开始复习</string>
+    <string name="review_progress">已掌握 %1$d / %2$d · 剩余 %3$d 个</string>
+    <string name="review_unknown">想不起来</string>
+    <string name="review_known">认识</string>
+    <string name="review_next">下一个</string>
+    <string name="review_exit">退出复习</string>
+    <string name="review_unknown_tip">已记为「需复习」，本轮稍后会再出现一次</string>
+    <string name="review_finished">本轮复习完成：过词 %1$d 个，掌握 %2$d 个</string>
+
+    <string name="hub_ai_section">AI 翻译 / 造句</string>
+    <string name="hub_ai_input_hint">输入中文或英文（单词、句子都可以）</string>
+    <string name="hub_ai_translate">中英互译</string>
+    <string name="hub_ai_sentence">AI 造句</string>
+    <string name="ai_need_input">请先输入内容</string>
+    <string name="ai_translate_title">翻译：%1$s</string>
+    <string name="ai_sentence_title">AI 造句：%1$s</string>
+
+    <string name="hub_dict_section">词典 · 全部单词</string>
+    <string name="dict_search_hint">搜索单词或中文释义</string>
+    <string name="dictionary_count">显示 %1$d / 共 %2$d 词</string>
+    <string name="dictionary_loading">正在加载词库…</string>
+    <string name="dict_ai_sentence">AI 造句</string>
+    <string name="dict_translate">英译中</string>
+    <string name="dict_mark_review">标记需复习</string>
+    <string name="dict_mark_known">标记已掌握</string>
+    <string name="dict_marked_review">已加入「需复习」列表</string>
+    <string name="dict_marked_known">已标记为掌握</string>
+    <string name="dict_status_new">未学</string>
+    <string name="dict_status_review">需复习</string>
+    <string name="dict_status_known">已掌握</string>
 </resources>

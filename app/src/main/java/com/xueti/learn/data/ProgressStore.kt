@@ -22,10 +22,10 @@ class ProgressStore(context: Context) {
     private val prefs = context.getSharedPreferences("xueti_progress", Context.MODE_PRIVATE)
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
 
-    /** 默认每日学习目标（个） */
+    /** 默认每日学习目标（个，1-500 可自定义） */
     var dailyGoal: Int
         get() = prefs.getInt(KEY_DAILY_GOAL, DEFAULT_GOAL)
-        set(value) = prefs.edit().putInt(KEY_DAILY_GOAL, value.coerceIn(5, 100)).apply()
+        set(value) = prefs.edit().putInt(KEY_DAILY_GOAL, value.coerceIn(MIN_GOAL, MAX_GOAL)).apply()
 
     // ---------------- 主目标（目标日 + 手写目标/寄语） ----------------
 
@@ -91,7 +91,7 @@ class ProgressStore(context: Context) {
     /** 设置某日的自定义目标；传 null 表示恢复跟随默认目标 */
     fun setCustomGoal(date: String, goal: Int?) {
         val obj = loadCustomGoals()
-        if (goal == null) obj.remove(date) else obj.put(date, goal.coerceIn(0, 200))
+        if (goal == null) obj.remove(date) else obj.put(date, goal.coerceIn(0, MAX_GOAL))
         prefs.edit().putString(KEY_CUSTOM_GOALS, obj.toString()).apply()
     }
 
@@ -207,6 +207,38 @@ class ProgressStore(context: Context) {
 
     fun isLearned(word: String): Boolean = loadRecords().containsKey(word)
 
+    fun recordOf(word: String): LearnRecord? = loadRecords()[word]
+
+    // ---------------- 复习（需复习的词，连续答对 2 次才算掌握） ----------------
+
+    /** 所有需复习的词（按最早学习时间排序） */
+    fun reviewWords(): List<LearnRecord> =
+        loadRecords().values
+            .filter { it.familiarity == Familiarity.UNKNOWN }
+            .sortedBy { it.firstLearnedAt }
+
+    /** 复习时答对：连续答对达到 [REVIEW_REQUIRED] 次即标记为掌握 */
+    fun addReviewCorrect(word: String): Int {
+        val records = loadRecords().toMutableMap()
+        val existing = records[word] ?: return 0
+        val streak = existing.reviewCorrect + 1
+        records[word] = if (streak >= REVIEW_REQUIRED) {
+            existing.copy(familiarity = Familiarity.KNOWN, reviewCorrect = REVIEW_REQUIRED)
+        } else {
+            existing.copy(reviewCorrect = streak)
+        }
+        saveRecords(records)
+        return streak
+    }
+
+    /** 复习时答错：连续答对次数清零，保持「需复习」 */
+    fun resetReviewCorrect(word: String) {
+        val records = loadRecords().toMutableMap()
+        val existing = records[word] ?: return
+        records[word] = existing.copy(familiarity = Familiarity.UNKNOWN, reviewCorrect = 0)
+        saveRecords(records)
+    }
+
     fun learnedCount(): Int = loadRecords().size
 
     fun learnedRecords(): List<LearnRecord> =
@@ -247,7 +279,8 @@ class ProgressStore(context: Context) {
                         Familiarity.valueOf(o.optString("familiarity", "KNOWN"))
                     }.getOrDefault(Familiarity.KNOWN),
                     firstLearnedAt = o.optLong("firstLearnedAt", System.currentTimeMillis()),
-                    reviewCount = o.optInt("reviewCount", 1)
+                    reviewCount = o.optInt("reviewCount", 1),
+                    reviewCorrect = o.optInt("reviewCorrect", 0)
                 )
             }
             map
@@ -263,6 +296,7 @@ class ProgressStore(context: Context) {
                     put("familiarity", record.familiarity.name)
                     put("firstLearnedAt", record.firstLearnedAt)
                     put("reviewCount", record.reviewCount)
+                    put("reviewCorrect", record.reviewCorrect)
                 }
             )
         }
@@ -280,5 +314,10 @@ class ProgressStore(context: Context) {
         private const val KEY_GOAL_TEXT = "goal_text"
         private const val MAX_HISTORY_DAYS = 400
         const val DEFAULT_GOAL = 20
+        const val MIN_GOAL = 1
+        const val MAX_GOAL = 500
+
+        /** 复习时连续答对多少次算掌握 */
+        const val REVIEW_REQUIRED = 2
     }
 }

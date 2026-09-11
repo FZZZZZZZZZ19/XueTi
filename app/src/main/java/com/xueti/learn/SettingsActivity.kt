@@ -24,6 +24,7 @@ import com.xueti.learn.databinding.ActivitySettingsBinding
 import com.xueti.learn.update.UpdateChecker
 import com.xueti.learn.update.showUpdateDialog
 import com.xueti.learn.util.BackgroundHelper
+import com.xueti.learn.util.GoalCountEditor
 import com.xueti.learn.util.ModelCatalog
 import com.xueti.learn.util.PeakHours
 import com.xueti.learn.util.ReminderNotifier
@@ -154,29 +155,21 @@ class SettingsActivity : BaseActivity() {
     // ---------------- 学习目标 ----------------
 
     private fun setupGoalSpinner() {
-        val adapter = ArrayAdapter(
-            this,
-            android.R.layout.simple_spinner_item,
-            GOAL_OPTIONS.map { getString(R.string.goal_words, it) }
-        )
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        binding.goalSpinner.adapter = adapter
-
-        val index = GOAL_OPTIONS.indexOf(store.dailyGoal).let { if (it < 0) 2 else it }
-        binding.goalSpinner.setSelection(index)
-        binding.goalSpinner.onItemSelectedListener =
-            object : android.widget.AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: android.widget.AdapterView<*>?,
-                    view: android.view.View?,
-                    position: Int,
-                    id: Long
-                ) {
-                    store.dailyGoal = GOAL_OPTIONS[position]
-                }
-
-                override fun onNothingSelected(parent: android.widget.AdapterView<*>?) = Unit
+        renderDailyGoal()
+        binding.goalRow.setOnClickListener {
+            GoalCountEditor.show(
+                activity = this,
+                title = getString(R.string.daily_goal),
+                initial = store.dailyGoal
+            ) { value ->
+                store.dailyGoal = value
+                renderDailyGoal()
             }
+        }
+    }
+
+    private fun renderDailyGoal() {
+        binding.goalValueText.text = getString(R.string.daily_goal_value, store.dailyGoal)
     }
 
     // ---------------- 每日提醒 ----------------
@@ -560,9 +553,5 @@ class SettingsActivity : BaseActivity() {
 
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
-    }
-
-    companion object {
-        private val GOAL_OPTIONS = listOf(5, 10, 20, 30, 50)
     }
 }
