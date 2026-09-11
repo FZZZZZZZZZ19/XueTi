@@ -1,5 +1,9 @@
 package com.xueti.learn.ai
 
+import com.xueti.learn.model.Chapter
+import com.xueti.learn.model.Section
+import com.xueti.learn.model.SectionContent
+import com.xueti.learn.model.StudyStyle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -11,8 +15,8 @@ import java.net.URL
 /**
  * DeepSeek 对话补全客户端（OpenAI 兼容格式）。
  *
- * 图片输入：`deepseek-flash` 模型支持 `image_url` 内容块（base64 data URL），
- * 图片只能出现在 user 消息中。
+ * - 图片输入：`deepseek-flash` 模型支持 `image_url` 内容块（base64 data URL），图片只能出现在 user 消息中
+ * - 结构化输出：使用 `response_format = json_object`，若模型不支持会自动去掉该参数重试
  */
 object DeepSeekClient {
 
@@ -23,10 +27,8 @@ object DeepSeekClient {
         val model: String
     )
 
-    /**
-     * 提交一道题（文本 + 可选图片）
-     * @param imageBase64 不含 `data:image/...;base64,` 前缀的原始 base64
-     */
+    // ---------------- 解题（图片 / 文字） ----------------
+
     suspend fun solve(
         apiKey: String,
         model: String,
@@ -34,86 +36,207 @@ object DeepSeekClient {
         question: String,
         imageBase64: String?,
         imageMime: String = "image/jpeg"
-    ): Result<Review> = withContext(Dispatchers.IO) {
-        runCatching {
-            val body = buildRequestBody(model, prompt, question, imageBase64, imageMime)
-            val connection = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
-                requestMethod = "POST"
-                connectTimeout = 15_000
-                readTimeout = 180_000
-                doOutput = true
-                setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                setRequestProperty("Authorization", "Bearer $apiKey")
-                setRequestProperty("Accept", "application/json")
+    ): Result<Review> = runCatching {
+        val text = buildString {
+            if (prompt.isNotBlank()) append(prompt.trim())
+            if (question.isNotBlank()) {
+                if (isNotEmpty()) append("\n\n")
+                append("【题目】\n").append(question.trim())
+            } else if (imageBase64 != null) {
+                if (isNotEmpty()) append("\n\n")
+                append("【题目】见图片")
             }
-            try {
-                OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
-                    writer.write(body)
-                    writer.flush()
-                }
-                val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+        }
 
-                if (code !in 200..299) {
-                    error(parseErrorMessage(text, code))
+        val answer = if (imageBase64 == null) {
+            chat(apiKey, model, text, jsonMode = false).getOrThrow()
+        } else {
+            val content = JSONArray()
+            content.put(JSONObject().put("type", "text").put("text", text))
+            content.put(
+                JSONObject().put("type", "image_url")
+                    .put("image_url", JSONObject().put("url", "data:$imageMime;base64,$imageBase64"))
+            )
+            chat(apiKey, model, content, jsonMode = false).getOrThrow()
+        }
+        if (answer.isBlank()) error("模型没有返回内容")
+        Review(answer = answer, model = model)
+    }
+
+    // ---------------- 全书目录 ----------------
+
+    /**
+     * 生成全书目录：书名/出版社/版次（可附大纲文字或大纲照片）
+     * 返回「大章 → 小章」两级目录
+     */
+    suspend fun generateOutline(
+        apiKey: String,
+        model: String,
+        title: String,
+        publisher: String,
+        edition: String,
+        outlineText: String?,
+        imageBase64: String?,
+        style: StudyStyle
+    ): Result<List<Chapter>> = runCatching {
+        val prompt = buildString {
+            append("你是教材目录整理助手。请为我整理这本书的完整目录（大章 → 小章两级）。\n")
+            append("书名：《").append(title.ifBlank { "未提供" }).append("》\n")
+            if (publisher.isNotBlank()) append("出版社：").append(publisher).append("\n")
+            if (edition.isNotBlank()) append("版次：").append(edition).append("\n")
+            if (!outlineText.isNullOrBlank()) {
+                append("\n以下是用户提供的目录/大纲内容，请以此为准整理：\n")
+                append(outlineText.trim()).append("\n")
+            }
+            if (imageBase64 != null) {
+                append("\n图片是这本书的目录页照片，请识别其中的章节目录并以此为准。\n")
+            }
+            append("\n要求：\n")
+            append("1) 尽量完整覆盖全书，一级为大章（如「第一章 绪论」），二级为小章（如「1.1 研究背景」）；\n")
+            append("2) 若信息不足，按该学科通用教材结构合理推断，但不要编造与书名明显无关的内容；\n")
+            append("3) 语言风格：").append(style.prompt).append("\n")
+            append("4) 只输出 JSON，不要任何解释文字。\n")
+            append("JSON 格式：{\"chapters\":[{\"title\":\"第一章 绪论\",\"sections\":[\"1.1 xxx\",\"1.2 xxx\"]}]}")
+        }
+
+        val answer = if (imageBase64 == null) {
+            chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
+        } else {
+            val content = JSONArray()
+            content.put(JSONObject().put("type", "text").put("text", prompt))
+            content.put(
+                JSONObject().put("type", "image_url")
+                    .put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$imageBase64"))
+            )
+            chat(apiKey, model, content, jsonMode = true).getOrThrow()
+        }
+
+        val root = JSONObject(extractJson(answer))
+        val chaptersArray = root.optJSONArray("chapters") ?: error("未解析到章节目录")
+        val chapters = (0 until chaptersArray.length()).mapNotNull { i ->
+            val chapterObj = chaptersArray.optJSONObject(i) ?: return@mapNotNull null
+            val chapterTitle = chapterObj.optString("title").trim()
+            if (chapterTitle.isEmpty()) return@mapNotNull null
+            val sectionsArray = chapterObj.optJSONArray("sections") ?: JSONArray()
+            val sections = (0 until sectionsArray.length()).mapNotNull { j ->
+                // 兼容两种返回：字符串数组 或 对象数组 {title:...}
+                val raw = sectionsArray.opt(j)
+                val sectionTitle = when (raw) {
+                    is String -> raw.trim()
+                    is JSONObject -> raw.optString("title").trim()
+                    else -> ""
                 }
-                val answer = parseAnswer(text)
-                if (answer.isBlank()) error("模型没有返回内容")
-                Review(answer = answer, model = model)
-            } finally {
-                runCatching { connection.disconnect() }
+                if (sectionTitle.isEmpty()) null else Section(id = sectionTitle, title = sectionTitle)
+            }
+            Chapter(id = chapterTitle, title = chapterTitle, sections = sections)
+        }
+        if (chapters.isEmpty()) error("目录为空，请补充书名或上传目录照片后重试")
+        chapters
+    }
+
+    // ---------------- 小章三模块内容 ----------------
+
+    /** 生成一个小章的「知识点 / 公式 / 例题」三模块内容 */
+    suspend fun generateSectionContent(
+        apiKey: String,
+        model: String,
+        bookTitle: String,
+        chapterTitle: String,
+        sectionTitle: String,
+        style: StudyStyle
+    ): Result<SectionContent> = runCatching {
+        val prompt = buildString {
+            append("你是教材讲解助手，请为下面这一小节整理学习内容。\n")
+            append("教材：《").append(bookTitle).append("》\n")
+            append("大章：").append(chapterTitle).append("\n")
+            append("小节：").append(sectionTitle).append("\n\n")
+            append("语言风格要求：").append(style.prompt).append("\n\n")
+            append("请严格分成三个模块输出（没有内容时写明「本节无公式」等，不要留空）：\n")
+            append("- knowledge：本节知识点（概念、定义、原理、公式的适用条件、易错点、记忆要点）\n")
+            append("- formulas：本节涉及的公式，用纯文本排版（如 S = v·t），并逐条说明每个符号的含义与单位\n")
+            append("- examples：2~3 道典型例题，每题给出「题目」与「分步解答」\n\n")
+            append("只输出 JSON，不要任何解释文字。\n")
+            append("JSON 格式：{\"knowledge\":\"...\",\"formulas\":\"...\",\"examples\":\"...\"}")
+        }
+
+        val answer = chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
+        val root = JSONObject(extractJson(answer))
+        SectionContent(
+            knowledge = root.optString("knowledge").trim().ifEmpty { "（未生成知识点）" },
+            formulas = root.optString("formulas").trim().ifEmpty { "（未生成公式）" },
+            examples = root.optString("examples").trim().ifEmpty { "（未生成例题）" },
+            styleKey = style.key,
+            generatedAt = System.currentTimeMillis()
+        )
+    }
+
+    // ---------------- HTTP ----------------
+
+    /**
+     * 发送对话补全请求
+     * @param userContent 纯文本，或 OpenAI 兼容的 content 数组（含图片）
+     */
+    private suspend fun chat(
+        apiKey: String,
+        model: String,
+        userContent: Any,
+        jsonMode: Boolean
+    ): Result<String> = withContext(Dispatchers.IO) {
+        runCatching {
+            if (jsonMode) {
+                request(apiKey, model, userContent, jsonMode = true).getOrElse { error ->
+                    // 模型不支持 response_format 时降级为普通请求
+                    if (error.message?.contains("response_format") == true ||
+                        error.message?.contains("HTTP 400") == true
+                    ) {
+                        request(apiKey, model, userContent, jsonMode = false).getOrThrow()
+                    } else {
+                        throw error
+                    }
+                }
+            } else {
+                request(apiKey, model, userContent, jsonMode = false).getOrThrow()
             }
         }
     }
 
-    private fun buildRequestBody(
+    private fun request(
+        apiKey: String,
         model: String,
-        prompt: String,
-        question: String,
-        imageBase64: String?,
-        imageMime: String
-    ): String {
-        val json = JSONObject()
-        json.put("model", model)
-        json.put("stream", false)
-
-        val messages = JSONArray()
-
-        // 用户提示词与题目文本拼接
-        val textBuilder = StringBuilder()
-        if (prompt.isNotBlank()) textBuilder.append(prompt.trim())
-        if (question.isNotBlank()) {
-            if (textBuilder.isNotEmpty()) textBuilder.append("\n\n")
-            textBuilder.append("【题目】\n").append(question.trim())
-        } else if (imageBase64 != null) {
-            if (textBuilder.isNotEmpty()) textBuilder.append("\n\n")
-            textBuilder.append("【题目】见图片")
+        userContent: Any,
+        jsonMode: Boolean
+    ): Result<String> = runCatching {
+        val body = JSONObject().apply {
+            put("model", model)
+            put("stream", false)
+            if (jsonMode) put("response_format", JSONObject().put("type", "json_object"))
+            val messages = JSONArray()
+            messages.put(JSONObject().put("role", "user").put("content", userContent))
+            put("messages", messages)
         }
 
-        val userMessage = JSONObject().put("role", "user")
-        if (imageBase64 == null) {
-            userMessage.put("content", textBuilder.toString())
-        } else {
-            val content = JSONArray()
-            content.put(
-                JSONObject()
-                    .put("type", "text")
-                    .put("text", textBuilder.toString())
-            )
-            content.put(
-                JSONObject()
-                    .put("type", "image_url")
-                    .put(
-                        "image_url",
-                        JSONObject().put("url", "data:$imageMime;base64,$imageBase64")
-                    )
-            )
-            userMessage.put("content", content)
+        val connection = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 15_000
+            readTimeout = 180_000
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            setRequestProperty("Authorization", "Bearer $apiKey")
+            setRequestProperty("Accept", "application/json")
         }
-        messages.put(userMessage)
-        json.put("messages", messages)
-        return json.toString()
+        try {
+            OutputStreamWriter(connection.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(body.toString())
+                writer.flush()
+            }
+            val code = connection.responseCode
+            val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+            val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            if (code !in 200..299) error(parseErrorMessage(text, code))
+            parseAnswer(text)
+        } finally {
+            runCatching { connection.disconnect() }
+        }
     }
 
     private fun parseAnswer(raw: String): String {
@@ -122,7 +245,6 @@ object DeepSeekClient {
         val message = choices.optJSONObject(0)?.optJSONObject("message") ?: return ""
         val content = message.optString("content").trim()
         if (content.isNotEmpty()) return content
-        // 思考模式下内容可能在 reasoning_content
         return message.optString("reasoning_content").trim()
     }
 
@@ -130,9 +252,25 @@ object DeepSeekClient {
         val fallback = "请求失败（HTTP $code）"
         if (raw.isBlank()) return fallback
         return runCatching {
-            val error = JSONObject(raw).optJSONObject("error")
-            val message = error?.optString("message").orEmpty()
+            val message = JSONObject(raw).optJSONObject("error")?.optString("message").orEmpty()
             if (message.isNotBlank()) message else fallback
         }.getOrDefault(fallback)
+    }
+
+    /** 从模型输出中提取 JSON（兼容 ```json 代码块与前后多余文字） */
+    private fun extractJson(raw: String): String {
+        var text = raw.trim()
+        if (text.startsWith("```")) {
+            text = text.removePrefix("```json").removePrefix("```JSON").removePrefix("```")
+            val end = text.lastIndexOf("```")
+            if (end >= 0) text = text.substring(0, end)
+            text = text.trim()
+        }
+        val start = text.indexOf('{')
+        val last = text.lastIndexOf('}')
+        if (start >= 0 && last > start) {
+            return text.substring(start, last + 1)
+        }
+        return text
     }
 }

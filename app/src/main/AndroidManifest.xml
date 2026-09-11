@@ -33,6 +33,27 @@
             android:exported="false" />
 
         <activity
+            android:name=".StudyHubActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".TextbookListActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".TextbookCreateActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".TextbookDetailActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".SectionStudyActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".WordListActivity"
             android:exported="false" />
 
