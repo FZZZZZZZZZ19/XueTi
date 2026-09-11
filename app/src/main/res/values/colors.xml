@@ -1,0 +1,24 @@
+<resources>
+    <color name="primary">#6750A4</color>
+    <color name="onPrimary">#FFFFFF</color>
+    <color name="primaryContainer">#EADDFF</color>
+    <color name="onPrimaryContainer">#21005D</color>
+    <color name="secondary">#625B71</color>
+    <color name="onSecondary">#FFFFFF</color>
+    <color name="secondaryContainer">#E8DEF8</color>
+    <color name="onSecondaryContainer">#1D192B</color>
+    <color name="background">#FEF7FF</color>
+    <color name="surface">#FEF7FF</color>
+    <color name="onSurface">#1D1B20</color>
+    <color name="surfaceVariant">#E7E0EC</color>
+    <color name="onSurfaceVariant">#49454F</color>
+    <color name="outline">#79747E</color>
+
+    <color name="accent">#2E7D32</color>
+    <color name="tag_known_bg">#D7F0D8</color>
+    <color name="tag_known_text">#1B5E20</color>
+    <color name="tag_unknown_bg">#FFDAD6</color>
+    <color name="tag_unknown_text">#B3261E</color>
+
+    <color name="ic_launcher_background">#6750A4</color>
+</resources>

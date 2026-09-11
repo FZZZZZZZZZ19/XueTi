@@ -1,0 +1,54 @@
+<resources>
+    <string name="app_name">学缇</string>
+
+    <!-- 首页 -->
+    <string name="home_date_prefix">今天 · %1$s</string>
+    <string name="today_study">今日学习</string>
+    <string name="goal_of">/ %1$d 词</string>
+    <string name="start_study">开始学习</string>
+    <string name="review_more">继续学习</string>
+    <string name="hint_not_started">今天还没有开始学习，加油！</string>
+    <string name="hint_keep_going">还差 %1$d 个词完成今日目标</string>
+    <string name="hint_goal_done">今日目标已完成，继续保持！</string>
+    <string name="word_bank_stat">已学 %1$d / %2$d 词</string>
+    <string name="word_bank_loading">统计中…</string>
+    <string name="loading_words">正在加载词库…</string>
+    <string name="word_list_title">我的词库</string>
+    <string name="stats_title">学习统计</string>
+    <string name="stats_sub">即将上线</string>
+    <string name="settings_title">设置</string>
+    <string name="settings_sub">目标 / 数据</string>
+    <string name="about_title">关于学缇</string>
+    <string name="about_slogan">每日一点，积少成多</string>
+    <string name="coming_soon">该功能正在开发中，敬请期待</string>
+
+    <!-- 每日单词学习 -->
+    <string name="study_title">每日单词</string>
+    <string name="tap_to_flip">点击卡片查看释义</string>
+    <string name="word_pos_meaning">%1$s %2$s</string>
+    <string name="session_progress">%1$d / %2$d</string>
+    <string name="known">认识</string>
+    <string name="unknown">不认识</string>
+    <string name="done_title">今日任务完成！</string>
+    <string name="done_no_new_words">今日没有新词可学</string>
+    <string name="done_detail">今日已学 %1$d 个词 · 累计掌握 %2$d 词</string>
+    <string name="back_home">返回首页</string>
+
+    <!-- 词库 -->
+    <string name="word_list_stat">已学 %1$d 词 · 认识 %2$d · 需复习 %3$d</string>
+    <string name="status_known">认识</string>
+    <string name="status_unknown">需复习</string>
+    <string name="empty_word_list">还没有学习记录\n去学几个单词吧</string>
+
+    <!-- 设置 -->
+    <string name="section_study">学习</string>
+    <string name="section_data">数据</string>
+    <string name="section_about">关于</string>
+    <string name="daily_goal">每日学习目标</string>
+    <string name="goal_words">%1$d 词</string>
+    <string name="reset_progress">清空学习记录</string>
+    <string name="reset_confirm">将清除所有学习进度，确定继续吗？</string>
+    <string name="reset_done">学习记录已清空</string>
+    <string name="confirm">确定</string>
+    <string name="cancel">取消</string>
+</resources>
