@@ -28,4 +28,11 @@
     <color name="style_swatch_green">#176B3A</color>
     <color name="style_swatch_orange">#8B5000</color>
     <color name="style_swatch_pink">#984061</color>
+
+    <!-- 学习统计 -->
+    <color name="stats_label">#49454F</color>
+    <color name="stats_bar">#B39DDB</color>
+    <color name="stats_bar_today">#6750A4</color>
+    <color name="on_surface_calendar">#1D1B20</color>
+    <color name="day_done_bg">#EADDFF</color>
 </resources>

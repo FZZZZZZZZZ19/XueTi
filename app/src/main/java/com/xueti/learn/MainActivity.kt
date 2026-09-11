@@ -49,7 +49,7 @@ class MainActivity : BaseActivity() {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         binding.cardStats.setOnClickListener {
-            toast(getString(R.string.coming_soon))
+            startActivity(Intent(this, StatsActivity::class.java))
         }
         binding.cardAbout.setOnClickListener {
             toast(getString(R.string.about_slogan))
@@ -64,8 +64,9 @@ class MainActivity : BaseActivity() {
     }
 
     private fun refreshProgress() {
-        val goal = store.dailyGoal
-        val todayLearned = store.todayLearnedCount().coerceAtMost(goal)
+        // 目标可能被日历按日期自定义（0 = 休息日）
+        val goal = store.dailyGoalFor(store.today())
+        val todayLearned = store.todayLearnedCount().coerceAtMost(maxOf(goal, 0))
 
         binding.todayCount.text = todayLearned.toString()
         binding.goalText.text = getString(R.string.goal_of, goal)
@@ -73,12 +74,13 @@ class MainActivity : BaseActivity() {
         binding.todayProgress.progress = todayLearned
 
         binding.progressHint.text = when {
+            goal <= 0 -> getString(R.string.rest_day_title)
             todayLearned >= goal -> getString(R.string.hint_goal_done)
             todayLearned == 0 -> getString(R.string.hint_not_started)
             else -> getString(R.string.hint_keep_going, goal - todayLearned)
         }
         binding.btnStartStudy.text = getString(
-            if (todayLearned >= goal) R.string.review_more else R.string.start_study
+            if (goal > 0 && todayLearned >= goal) R.string.review_more else R.string.start_study
         )
 
         // 词库总数需异步获取（约 6600 词，已在 Application 预加载）

@@ -70,7 +70,14 @@ class StudyActivity : BaseActivity() {
 
     /** 取今日尚未学习的单词组成学习队列 */
     private fun buildQueue(allWords: List<Word>) {
-        val goal = store.dailyGoal
+        // 目标可被日历按日期自定义（0 = 休息日）
+        val goal = store.dailyGoalFor(store.today())
+        if (goal <= 0) {
+            sessionTotal = 0
+            sessionFinished = 0
+            showDoneState(noNewWords = true, restDay = true)
+            return
+        }
         val learnedWords = store.learnedRecords().map { it.word }.toSet()
         val remainToday = (goal - store.todayLearnedCount()).coerceAtLeast(0)
         val pool = allWords.filter { it.word !in learnedWords }
@@ -138,16 +145,22 @@ class StudyActivity : BaseActivity() {
         binding.sessionText.text = getString(R.string.session_progress, sessionFinished, sessionTotal)
     }
 
-    private fun showDoneState(noNewWords: Boolean) {
+    private fun showDoneState(noNewWords: Boolean, restDay: Boolean = false) {
         binding.studyContainer.visibility = View.GONE
         binding.doneContainer.visibility = View.VISIBLE
-        binding.doneTitle.text = getString(
-            if (noNewWords) R.string.done_no_new_words else R.string.done_title
-        )
-        binding.doneDetail.text = getString(
-            R.string.done_detail,
-            store.todayLearnedCount(),
-            store.learnedCount()
-        )
+        binding.doneTitle.text = when {
+            restDay -> getString(R.string.rest_day_title)
+            noNewWords -> getString(R.string.done_no_new_words)
+            else -> getString(R.string.done_title)
+        }
+        binding.doneDetail.text = if (restDay) {
+            getString(R.string.rest_day_detail)
+        } else {
+            getString(
+                R.string.done_detail,
+                store.todayLearnedCount(),
+                store.learnedCount()
+            )
+        }
     }
 }

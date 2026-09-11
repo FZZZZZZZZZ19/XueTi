@@ -15,7 +15,7 @@
     <string name="loading_words">正在加载词库…</string>
     <string name="word_list_title">我的词库</string>
     <string name="stats_title">学习统计</string>
-    <string name="stats_sub">即将上线</string>
+    <string name="stats_sub">记录 / 日历</string>
     <string name="settings_title">设置</string>
     <string name="settings_sub">目标 / 数据</string>
     <string name="about_title">关于学缇</string>
@@ -128,4 +128,47 @@
     <string name="downloading_update">正在下载更新</string>
     <string name="download_failed">下载失败，请重试</string>
     <string name="install_failed">安装失败，请允许「安装未知应用」后重试</string>
+
+    <!-- AI 图片处理（裁剪 / 增强） -->
+    <string name="ai_btn_crop">裁剪</string>
+    <string name="ai_btn_enhance">图像增强</string>
+    <string name="ai_btn_restore">还原原图</string>
+    <string name="ai_enhance_tip">提示：题目照片建议先「裁剪」再用「高斯锐化 / 二值化」增强，文字识别更准</string>
+    <string name="crop_title">裁剪图片</string>
+    <string name="crop_hint">拖动四角调整裁剪范围，可旋转 90° 后再裁剪</string>
+    <string name="crop_rotate">旋转 90°</string>
+    <string name="crop_reset">重置</string>
+    <string name="crop_confirm">完成裁剪</string>
+    <string name="crop_failed">裁剪失败，请重试</string>
+    <string name="enhance_title">图像增强</string>
+    <string name="enhance_option_gray">灰度化</string>
+    <string name="enhance_option_contrast">自动对比度</string>
+    <string name="enhance_option_sharpen">高斯锐化（文字边缘更清晰）</string>
+    <string name="enhance_option_binarize">二值化（黑白文字，最锐利）</string>
+    <string name="enhance_apply">应用增强</string>
+    <string name="enhance_processing">正在增强图片…</string>
+    <string name="enhance_done">增强完成</string>
+    <string name="enhance_failed">增强失败</string>
+
+    <!-- 学习统计与日历 -->
+    <string name="stats_today">今日已学</string>
+    <string name="stats_streak">连续打卡</string>
+    <string name="stats_total">累计已学</string>
+    <string name="stats_known_rate">认识 %1$d · 需复习 %2$d · 认识率 %3$d%%</string>
+    <string name="stats_section_chart">近 7 天学习</string>
+    <string name="stats_section_calendar">学习日历</string>
+    <string name="stats_section_today">今日学习内容</string>
+    <string name="stats_calendar_hint">点击日期：查看当天学习内容并自定义该日目标</string>
+    <string name="stats_day_learned">当天学习：%1$d 个词</string>
+    <string name="stats_day_goal">当天目标：%1$d 个词</string>
+    <string name="stats_day_custom_suffix">（自定义）</string>
+    <string name="stats_day_pick_goal">选择该日目标：</string>
+    <string name="stats_goal_saved">目标已保存</string>
+    <string name="goal_follow_default">跟随默认目标</string>
+    <string name="goal_rest_day">设为休息日（不学习）</string>
+    <string name="month_title">%1$d年%2$d月</string>
+    <string name="stats_today_empty">今天还没有学习记录</string>
+    <string name="stats_today_goal">今日目标 %1$d 词 · 已学 %2$d 词</string>
+    <string name="rest_day_title">今天是休息日</string>
+    <string name="rest_day_detail">你在日历中把今天设为了休息日，去统计页可以改回目标</string>
 </resources>
