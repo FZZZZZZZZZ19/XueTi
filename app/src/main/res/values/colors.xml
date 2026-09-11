@@ -21,4 +21,11 @@
     <color name="tag_unknown_text">#B3261E</color>
 
     <color name="ic_launcher_background">#6750A4</color>
+
+    <!-- 界面风格色板（设置中心选择） -->
+    <color name="style_swatch_purple">#6750A4</color>
+    <color name="style_swatch_blue">#0061A4</color>
+    <color name="style_swatch_green">#176B3A</color>
+    <color name="style_swatch_orange">#8B5000</color>
+    <color name="style_swatch_pink">#984061</color>
 </resources>

@@ -3,11 +3,14 @@ package com.xueti.learn
 import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
+import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.WordRepository
 import com.xueti.learn.databinding.ActivityMainBinding
+import com.xueti.learn.update.UpdateChecker
+import com.xueti.learn.update.showUpdateDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -16,13 +19,15 @@ import java.util.Locale
 /**
  * 首页：今日学习进度 + 功能入口
  */
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val repository: WordRepository get() = (application as App).wordRepository
     private val store: ProgressStore get() = (application as App).progressStore
+    private val settings: SettingsStore get() = (application as App).settings
 
     private val dateFormat = SimpleDateFormat("M月d日 EEEE", Locale.CHINA)
+    private val dayFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,6 +51,8 @@ class MainActivity : AppCompatActivity() {
         binding.cardAbout.setOnClickListener {
             toast(getString(R.string.about_slogan))
         }
+
+        maybeAutoCheckUpdate()
     }
 
     override fun onResume() {
@@ -82,5 +89,20 @@ class MainActivity : AppCompatActivity() {
 
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    /** 启动时自动检查更新（每天最多一次，可在设置中关闭） */
+    private fun maybeAutoCheckUpdate() {
+        if (!settings.autoCheckUpdate) return
+        val today = dayFormat.format(Date())
+        if (settings.lastUpdateCheckDate == today) return
+        lifecycleScope.launch {
+            UpdateChecker.fetchLatest().onSuccess { info ->
+                settings.lastUpdateCheckDate = today
+                if (UpdateChecker.isNewer(info.version, UpdateChecker.currentVersion())) {
+                    showUpdateDialog(info)
+                }
+            }
+        }
     }
 }

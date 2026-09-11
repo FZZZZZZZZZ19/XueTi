@@ -15,4 +15,52 @@
         <item name="colorOnSurfaceVariant">@color/onSurfaceVariant</item>
         <item name="colorOutline">@color/outline</item>
     </style>
+
+    <!-- 界面风格：海洋蓝 -->
+    <style name="Theme.XueTi.Blue">
+        <item name="colorPrimary">#0061A4</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#D1E4FF</item>
+        <item name="colorOnPrimaryContainer">#001D36</item>
+        <item name="colorSecondary">#535F70</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#D7E3F7</item>
+        <item name="colorOnSecondaryContainer">#101C2B</item>
+    </style>
+
+    <!-- 界面风格：森林绿 -->
+    <style name="Theme.XueTi.Green">
+        <item name="colorPrimary">#176B3A</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#A8F4C0</item>
+        <item name="colorOnPrimaryContainer">#00210E</item>
+        <item name="colorSecondary">#4F6354</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#D1E8D6</item>
+        <item name="colorOnSecondaryContainer">#0C1F14</item>
+    </style>
+
+    <!-- 界面风格：日落橙 -->
+    <style name="Theme.XueTi.Orange">
+        <item name="colorPrimary">#8B5000</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFDCC2</item>
+        <item name="colorOnPrimaryContainer">#2D1600</item>
+        <item name="colorSecondary">#725A42</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#FFDDBA</item>
+        <item name="colorOnSecondaryContainer">#291806</item>
+    </style>
+
+    <!-- 界面风格：樱花粉 -->
+    <style name="Theme.XueTi.Pink">
+        <item name="colorPrimary">#984061</item>
+        <item name="colorOnPrimary">#FFFFFF</item>
+        <item name="colorPrimaryContainer">#FFD9E2</item>
+        <item name="colorOnPrimaryContainer">#3E001D</item>
+        <item name="colorSecondary">#74565F</item>
+        <item name="colorOnSecondary">#FFFFFF</item>
+        <item name="colorSecondaryContainer">#FFD9E2</item>
+        <item name="colorOnSecondaryContainer">#2B151C</item>
+    </style>
 </resources>

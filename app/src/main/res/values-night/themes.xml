@@ -1,0 +1,47 @@
+<resources>
+    <!-- 深色模式下各界面风格的配色覆盖 -->
+
+    <style name="Theme.XueTi.Blue">
+        <item name="colorPrimary">#9ECAFF</item>
+        <item name="colorOnPrimary">#003258</item>
+        <item name="colorPrimaryContainer">#00497D</item>
+        <item name="colorOnPrimaryContainer">#D1E4FF</item>
+        <item name="colorSecondary">#BBC7DB</item>
+        <item name="colorOnSecondary">#253140</item>
+        <item name="colorSecondaryContainer">#3B4858</item>
+        <item name="colorOnSecondaryContainer">#D7E3F7</item>
+    </style>
+
+    <style name="Theme.XueTi.Green">
+        <item name="colorPrimary">#8CD6A5</item>
+        <item name="colorOnPrimary">#00391C</item>
+        <item name="colorPrimaryContainer">#00522C</item>
+        <item name="colorOnPrimaryContainer">#A8F4C0</item>
+        <item name="colorSecondary">#B6CCBB</item>
+        <item name="colorOnSecondary">#223528</item>
+        <item name="colorSecondaryContainer">#384B3E</item>
+        <item name="colorOnSecondaryContainer">#D1E8D6</item>
+    </style>
+
+    <style name="Theme.XueTi.Orange">
+        <item name="colorPrimary">#FFB86B</item>
+        <item name="colorOnPrimary">#4A2800</item>
+        <item name="colorPrimaryContainer">#6B3C00</item>
+        <item name="colorOnPrimaryContainer">#FFDCC2</item>
+        <item name="colorSecondary">#E0C1A4</item>
+        <item name="colorOnSecondary">#3F2D1A</item>
+        <item name="colorSecondaryContainer">#57422C</item>
+        <item name="colorOnSecondaryContainer">#FFDDBA</item>
+    </style>
+
+    <style name="Theme.XueTi.Pink">
+        <item name="colorPrimary">#FFB0C8</item>
+        <item name="colorOnPrimary">#5E1133</item>
+        <item name="colorPrimaryContainer">#7D2948</item>
+        <item name="colorOnPrimaryContainer">#FFD9E2</item>
+        <item name="colorSecondary">#E3BDC6</item>
+        <item name="colorOnSecondary">#422931</item>
+        <item name="colorSecondaryContainer">#5A3F47</item>
+        <item name="colorOnSecondaryContainer">#FFD9E2</item>
+    </style>
+</resources>

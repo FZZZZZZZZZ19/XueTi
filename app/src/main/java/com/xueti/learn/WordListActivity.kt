@@ -2,17 +2,17 @@ package com.xueti.learn
 
 import android.os.Bundle
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.xueti.learn.adapter.WordListAdapter
+import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.WordRepository
 import com.xueti.learn.databinding.ActivityWordListBinding
 import kotlinx.coroutines.launch
 
 /** 我的词库：已学单词与掌握情况 */
-class WordListActivity : AppCompatActivity() {
+class WordListActivity : BaseActivity() {
 
     private lateinit var binding: ActivityWordListBinding
     private val repository: WordRepository get() = (application as App).wordRepository

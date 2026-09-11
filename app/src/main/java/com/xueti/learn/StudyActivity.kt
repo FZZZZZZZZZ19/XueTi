@@ -2,9 +2,9 @@ package com.xueti.learn
 
 import android.os.Bundle
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.WordRepository
 import com.xueti.learn.databinding.ActivityStudyBinding
@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
  * 卡片式流程 —— 正面单词/音标，点击翻转看释义；
  * 「认识」标记掌握，「不认识」重新排到本轮队尾再练一次。
  */
-class StudyActivity : AppCompatActivity() {
+class StudyActivity : BaseActivity() {
 
     private lateinit var binding: ActivityStudyBinding
     private val repository: WordRepository get() = (application as App).wordRepository
