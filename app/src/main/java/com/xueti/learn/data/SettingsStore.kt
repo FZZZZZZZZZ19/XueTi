@@ -49,6 +49,11 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt(KEY_REMINDER_MINUTE, 0)
         set(value) = prefs.edit().putInt(KEY_REMINDER_MINUTE, value.coerceIn(0, 59)).apply()
 
+    /** 自定义提醒句子（留空则只显示今日进度） */
+    var reminderText: String
+        get() = prefs.getString(KEY_REMINDER_TEXT, "").orEmpty()
+        set(value) = prefs.edit().putString(KEY_REMINDER_TEXT, value.trim()).apply()
+
     // ---------------- AI 解题（用户自备 Key / 提示词） ----------------
 
     /** DeepSeek API Key（由用户自行填写） */
@@ -75,6 +80,7 @@ class SettingsStore(context: Context) {
         private const val KEY_REMINDER_ENABLED = "reminder_enabled"
         private const val KEY_REMINDER_HOUR = "reminder_hour"
         private const val KEY_REMINDER_MINUTE = "reminder_minute"
+        private const val KEY_REMINDER_TEXT = "reminder_text"
         private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
         private const val KEY_AI_PROMPT = "ai_prompt"
         private const val KEY_AI_MODEL = "ai_model"

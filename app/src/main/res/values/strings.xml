@@ -282,4 +282,17 @@
     <string name="usage_reset">重置用量统计</string>
     <string name="usage_reset_confirm">将清空累计请求数与 token 统计（不影响学习记录），确定吗？</string>
     <string name="usage_reset_done">用量统计已重置</string>
+
+    <!-- v1.71：自定义提醒句子 + 账户余额 -->
+    <string name="reminder_text_field">自定义提醒句子（留空则只显示今日进度）</string>
+    <string name="reminder_text_save">保存提醒语句</string>
+    <string name="reminder_text_saved">提醒语句已保存（可点「测试提醒」预览）</string>
+    <string name="balance_row">账户余额</string>
+    <string name="balance_idle">点击查询</string>
+    <string name="balance_querying">查询中…</string>
+    <string name="balance_value">¥ %1$s</string>
+    <string name="balance_detail">赠送 ¥%1$s · 充值 ¥%2$s</string>
+    <string name="balance_detail_insufficient">⚠ 余额不足，请及时充值（赠送 ¥%1$s · 充值 ¥%2$s）</string>
+    <string name="balance_failed">查询失败：%1$s</string>
+    <string name="balance_tap_hint">点击「账户余额」可刷新</string>
 </resources>

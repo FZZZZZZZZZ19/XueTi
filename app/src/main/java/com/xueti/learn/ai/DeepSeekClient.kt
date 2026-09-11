@@ -22,6 +22,7 @@ import java.net.URL
 object DeepSeekClient {
 
     private const val ENDPOINT = "https://api.deepseek.com/chat/completions"
+    private const val BALANCE_ENDPOINT = "https://api.deepseek.com/user/balance"
 
     /** token 用量 */
     data class Usage(
@@ -37,7 +38,52 @@ object DeepSeekClient {
 
     data class SectionResult(val content: SectionContent, val usage: Usage?)
 
+    /** 账户余额 */
+    data class BalanceInfo(
+        val currency: String,
+        val total: String,
+        val granted: String,
+        val toppedUp: String,
+        val available: Boolean
+    )
+
     private data class ChatResult(val text: String, val usage: Usage?)
+
+    // ---------------- 账户余额 ----------------
+
+    /** 查询账户余额：GET /user/balance */
+    suspend fun fetchBalance(apiKey: String): Result<BalanceInfo> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val connection = (URL(BALANCE_ENDPOINT).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 15_000
+                    readTimeout = 20_000
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                }
+                try {
+                    val code = connection.responseCode
+                    val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                    val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    if (code !in 200..299) error(parseErrorMessage(text, code))
+
+                    val root = JSONObject(text)
+                    val infos = root.optJSONArray("balance_infos")
+                    if (infos == null || infos.length() == 0) error("接口未返回余额信息")
+                    val first = infos.optJSONObject(0) ?: error("接口未返回余额信息")
+                    BalanceInfo(
+                        currency = first.optString("currency", "CNY"),
+                        total = first.optString("total_balance", "0"),
+                        granted = first.optString("granted_balance", "0"),
+                        toppedUp = first.optString("topped_up_balance", "0"),
+                        available = root.optBoolean("is_available", true)
+                    )
+                } finally {
+                    runCatching { connection.disconnect() }
+                }
+            }
+        }
 
     // ---------------- 解题（多图 / 文字） ----------------
 

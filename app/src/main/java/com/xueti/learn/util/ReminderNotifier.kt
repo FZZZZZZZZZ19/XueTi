@@ -12,6 +12,7 @@ import androidx.core.content.ContextCompat
 import com.xueti.learn.R
 import com.xueti.learn.StudyActivity
 import com.xueti.learn.data.ProgressStore
+import com.xueti.learn.data.SettingsStore
 
 /** 每日学习提醒通知的构建与发送（定时触发与「测试提醒」共用） */
 object ReminderNotifier {
@@ -33,11 +34,15 @@ object ReminderNotifier {
         val learned = store.todayLearnedCount()
         val remain = (goal - learned).coerceAtLeast(0)
 
-        val text = if (remain > 0) {
+        val progress = if (remain > 0) {
             context.getString(R.string.notify_text_remain, learned, goal, remain)
         } else {
             context.getString(R.string.notify_text_done)
         }
+        // 用户自定义提醒句子优先显示，后面附上今日进度
+        val custom = SettingsStore(context).reminderText
+        val text = if (custom.isBlank()) progress else "$custom\n$progress"
+
         val title = context.getString(
             if (test) R.string.notify_title_test else R.string.notify_title
         )

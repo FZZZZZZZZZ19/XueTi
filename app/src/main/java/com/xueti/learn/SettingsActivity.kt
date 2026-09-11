@@ -16,6 +16,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.UsageStore
@@ -100,6 +101,38 @@ class SettingsActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         refreshUsage()
+        // 有 Key 时自动刷新一次余额
+        if (settings.deepSeekApiKey.isNotBlank()) {
+            queryBalance()
+        }
+    }
+
+    /** 查询 DeepSeek 账户余额 */
+    private fun queryBalance() {
+        val apiKey = settings.deepSeekApiKey
+        if (apiKey.isBlank()) {
+            binding.balanceValue.text = getString(R.string.balance_idle)
+            binding.balanceDetail.text = getString(R.string.balance_tap_hint)
+            return
+        }
+        binding.balanceValue.text = getString(R.string.balance_querying)
+        lifecycleScope.launch {
+            val result = DeepSeekClient.fetchBalance(apiKey)
+            result.onSuccess { balance ->
+                binding.balanceValue.text =
+                    getString(R.string.balance_value, balance.total)
+                binding.balanceDetail.text = getString(
+                    if (balance.available) R.string.balance_detail
+                    else R.string.balance_detail_insufficient,
+                    balance.granted,
+                    balance.toppedUp
+                )
+            }.onFailure { error ->
+                binding.balanceValue.text = getString(R.string.balance_idle)
+                binding.balanceDetail.text =
+                    getString(R.string.balance_failed, error.message ?: "未知错误")
+            }
+        }
     }
 
     override fun onPause() {
@@ -180,6 +213,13 @@ class SettingsActivity : BaseActivity() {
         binding.testReminderRow.setOnClickListener { testReminder() }
         // 国产 ROM 后台限制排障入口
         binding.reminderHelpRow.setOnClickListener { openReminderHelp() }
+
+        // 自定义提醒句子
+        binding.etReminderText.setText(settings.reminderText)
+        binding.btnSaveReminderText.setOnClickListener {
+            settings.reminderText = binding.etReminderText.text?.toString().orEmpty()
+            toast(R.string.reminder_text_saved)
+        }
     }
 
     private fun testReminder() {
@@ -236,7 +276,9 @@ class SettingsActivity : BaseActivity() {
                 .ifEmpty { "deepseek-flash" }
             toast(R.string.ai_settings_saved)
             refreshUsage()
+            queryBalance()
         }
+        binding.balanceRow.setOnClickListener { queryBalance() }
 
         suppressReminderListener = true
         binding.swOffPeak.isChecked = usageStore.offPeakReminder
