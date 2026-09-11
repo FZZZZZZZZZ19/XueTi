@@ -41,7 +41,20 @@ object ReminderNotifier {
         val title = context.getString(
             if (test) R.string.notify_title_test else R.string.notify_title
         )
+        post(context, title, text)
+    }
 
+    /** 谷时（优惠时段）开始提醒 */
+    fun showOffPeak(context: Context) {
+        if (!canNotify(context)) return
+        post(
+            context,
+            context.getString(R.string.notify_offpeak_title),
+            context.getString(R.string.notify_offpeak_text)
+        )
+    }
+
+    private fun post(context: Context, title: String, text: String) {
         val intent = Intent(context, StudyActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }

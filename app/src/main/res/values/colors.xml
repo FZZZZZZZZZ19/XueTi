@@ -35,4 +35,5 @@
     <color name="stats_bar_today">#6750A4</color>
     <color name="on_surface_calendar">#1D1B20</color>
     <color name="day_done_bg">#EADDFF</color>
+    <color name="thumb_stroke">#33000000</color>
 </resources>

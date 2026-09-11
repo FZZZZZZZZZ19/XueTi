@@ -3,6 +3,7 @@ package com.xueti.learn
 import android.app.Application
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
+import com.xueti.learn.data.UsageStore
 import com.xueti.learn.data.WordRepository
 import com.xueti.learn.util.NotificationHelper
 import com.xueti.learn.work.ReminderScheduler
@@ -35,6 +36,11 @@ class App : Application() {
         NotificationHelper.ensureChannel(this)
         if (settings.reminderEnabled) {
             ReminderScheduler.schedule(this, settings.reminderHour, settings.reminderMinute)
+        }
+        // 恢复谷时（优惠时段）提醒
+        val usageStore = UsageStore(this)
+        if (usageStore.offPeakReminder) {
+            ReminderScheduler.scheduleOffPeak(this)
         }
     }
 }

@@ -91,7 +91,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="@string/textbook_outline_photo_hint"
+                android:text="@string/textbook_outline_photo_multi_hint"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
 
@@ -116,28 +116,38 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:text="@string/ai_pick_gallery" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnClearPhoto"
-                    style="?attr/materialButtonOutlinedStyle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:text="@string/ai_clear_image"
-                    android:visibility="gone" />
+                    android:text="@string/ai_pick_gallery_multi" />
             </LinearLayout>
 
-            <ImageView
-                android:id="@+id/photoPreview"
+            <HorizontalScrollView
                 android:layout_width="match_parent"
-                android:layout_height="180dp"
-                android:layout_marginTop="8dp"
-                android:background="#11000000"
-                android:contentDescription="@string/textbook_outline_photo"
-                android:scaleType="fitCenter"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/imageStrip"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="4dp" />
+            </HorizontalScrollView>
+
+            <TextView
+                android:id="@+id/imageCountHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp"
                 android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/peakHint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="11sp" />
 
             <TextView
                 android:layout_width="match_parent"

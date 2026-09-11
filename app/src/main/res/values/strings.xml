@@ -242,4 +242,44 @@
     <string name="module_knowledge">知识点</string>
     <string name="module_formula">公式</string>
     <string name="module_example">例题</string>
+
+    <!-- v1.7：多图上传 / API 设置与计费 / 峰谷提醒 -->
+    <string name="image_multi_hint">可添加多张图片（拍照或相册多选）</string>
+    <string name="image_add">添加</string>
+    <string name="image_count_hint">已选 %1$d / %2$d 张（点击缩略图切换当前图片）</string>
+    <string name="image_limit_reached">最多 %1$d 张，请先删除部分图片</string>
+    <string name="ai_pick_gallery_multi">相册（可多选）</string>
+    <string name="crop_done">裁剪完成</string>
+    <string name="enhance_no_backup">当前没有可还原的增强记录</string>
+    <string name="textbook_outline_photo_multi_hint">可拍多张目录页（如第一章～第三章分几张拍），AI 会合并整理</string>
+    <string name="ai_api_not_configured">尚未配置 API Key，点击前往「设置 → AI 接口」填写</string>
+    <string name="ai_api_configured">接口：%1$s（点击可修改 API Key / 模型）</string>
+    <string name="ai_done_tokens">完成（模型：%1$s，本次约 %2$d tokens）</string>
+    <string name="section_generated_tokens">已按「%1$s」风格生成（约 %2$d tokens）</string>
+    <string name="textbook_created_tokens">已生成目录：大章 %1$d · 小章 %2$d（约 %3$d tokens）</string>
+
+    <!-- 设置：AI 接口 -->
+    <string name="section_ai">AI 接口（DeepSeek）</string>
+    <string name="ai_key_field">DeepSeek API Key（仅保存在本机）</string>
+    <string name="ai_model_field">模型（deepseek-flash 支持图片理解）</string>
+    <string name="ai_save_settings">保存接口设置</string>
+    <string name="ai_settings_saved">接口设置已保存</string>
+    <string name="ai_key_tip2">Key 在 platform.deepseek.com 申请；App 不内置任何 Key</string>
+    <string name="off_peak_title">峰谷时段与优惠提醒</string>
+    <string name="off_peak_reminder">谷时开始提醒（每天 00:30 通知）</string>
+    <string name="off_peak_status">%1$s\n%2$s</string>
+    <string name="notify_offpeak_title">谷时开始，API 更便宜</string>
+    <string name="notify_offpeak_text">现在是 DeepSeek 优惠时段（00:30–08:30，约 5 折），适合批量生成目录与学习内容。</string>
+
+    <!-- 设置：用量与计费 -->
+    <string name="section_usage">API 用量与计费</string>
+    <string name="usage_summary">累计请求 %1$d 次（今日 %2$d 次）\n输入 %3$d tokens · 输出 %4$d tokens\n今日消耗 %5$d tokens</string>
+    <string name="usage_price_input">输入单价（元/百万 tokens）</string>
+    <string name="usage_price_output">输出单价（元/百万 tokens）</string>
+    <string name="usage_cost">预估费用</string>
+    <string name="usage_cost_value">¥ %1$s</string>
+    <string name="usage_cost_hint">按峰时标准价估算；谷时实际约 5 折。单价可自行修改以匹配官方最新价格。</string>
+    <string name="usage_reset">重置用量统计</string>
+    <string name="usage_reset_confirm">将清空累计请求数与 token 统计（不影响学习记录），确定吗？</string>
+    <string name="usage_reset_done">用量统计已重置</string>
 </resources>

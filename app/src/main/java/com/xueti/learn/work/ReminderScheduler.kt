@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import com.xueti.learn.util.PeakHours
 import java.util.Calendar
 
 /**
@@ -16,7 +17,9 @@ import java.util.Calendar
 object ReminderScheduler {
 
     const val ACTION_REMIND = "com.xueti.learn.action.DAILY_REMIND"
+    const val ACTION_OFF_PEAK = "com.xueti.learn.action.OFF_PEAK"
     private const val REQUEST_CODE = 1001
+    private const val REQUEST_CODE_OFF_PEAK = 1002
 
     fun schedule(context: Context, hour: Int, minute: Int) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
@@ -33,9 +36,26 @@ object ReminderScheduler {
         }
     }
 
+    /** 谷时（优惠时段）开始提醒：每天 00:30 */
+    fun scheduleOffPeak(context: Context) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        val pendingIntent = buildOffPeakPendingIntent(context)
+        val triggerAt = PeakHours.nextOffPeakStart().timeInMillis
+        runCatching {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent)
+        }.onFailure {
+            runCatching { alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent) }
+        }
+    }
+
     fun cancel(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         runCatching { alarmManager.cancel(buildPendingIntent(context)) }
+    }
+
+    fun cancelOffPeak(context: Context) {
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
+        runCatching { alarmManager.cancel(buildOffPeakPendingIntent(context)) }
     }
 
     /** 计算下一次触发时间（若今天该时刻已过则顺延到明天） */
@@ -70,6 +90,18 @@ object ReminderScheduler {
         return PendingIntent.getBroadcast(
             context,
             REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+    }
+
+    private fun buildOffPeakPendingIntent(context: Context): PendingIntent {
+        val intent = Intent(context, ReminderReceiver::class.java).apply {
+            action = ACTION_OFF_PEAK
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_OFF_PEAK,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )

@@ -18,14 +18,17 @@ import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
+import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivitySettingsBinding
 import com.xueti.learn.update.UpdateChecker
 import com.xueti.learn.update.showUpdateDialog
 import com.xueti.learn.util.BackgroundHelper
+import com.xueti.learn.util.PeakHours
 import com.xueti.learn.util.ReminderNotifier
 import com.xueti.learn.util.ThemeStyle
 import com.xueti.learn.work.ReminderScheduler
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * 设置中心：学习目标 / 每日提醒 / 外观（界面风格、自定义背景）/ 更新 / 数据 / 关于
@@ -35,9 +38,13 @@ class SettingsActivity : BaseActivity() {
     private lateinit var binding: ActivitySettingsBinding
     private val store: ProgressStore get() = (application as App).progressStore
     private val settings: SettingsStore get() = (application as App).settings
+    private val usageStore by lazy { UsageStore(this) }
 
     private var suppressReminderListener = false
     private var checkingDialog: AlertDialog? = null
+
+    /** 通知权限授予后要执行的动作（学习提醒 / 谷时提醒） */
+    private var pendingNotificationAction: (() -> Unit)? = null
 
     /** 选择自定义背景图（持久化读取权限，重启后仍可用） */
     private val imagePicker =
@@ -59,13 +66,15 @@ class SettingsActivity : BaseActivity() {
     private val notificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) {
-                enableReminder()
+                pendingNotificationAction?.invoke()
             } else {
                 suppressReminderListener = true
                 binding.swReminder.isChecked = false
+                binding.swOffPeak.isChecked = false
                 suppressReminderListener = false
                 toast(R.string.notification_permission_denied)
             }
+            pendingNotificationAction = null
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,12 +87,26 @@ class SettingsActivity : BaseActivity() {
 
         setupGoalSpinner()
         setupReminder()
+        setupAi()
+        setupUsage()
         setupStylePicker()
         setupBackground()
         setupUpdate()
 
         binding.resetRow.setOnClickListener { confirmReset() }
         binding.aboutVersion.text = BuildConfig.VERSION_NAME
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshUsage()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // 单价采用离开页面时保存，避免每输入一个字符就写盘
+        binding.etInputPrice.text?.toString()?.toFloatOrNull()?.let { usageStore.inputPrice = it }
+        binding.etOutputPrice.text?.toString()?.toFloatOrNull()?.let { usageStore.outputPrice = it }
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
@@ -195,11 +218,94 @@ class SettingsActivity : BaseActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         if (needsPermission) {
+            pendingNotificationAction = { enableReminder() }
             notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         } else {
             enableReminder()
         }
     }
+
+    // ---------------- AI 接口 ----------------
+
+    private fun setupAi() {
+        binding.etApiKey.setText(settings.deepSeekApiKey)
+        binding.etAiModel.setText(settings.aiModel)
+        binding.btnSaveAi.setOnClickListener {
+            settings.deepSeekApiKey = binding.etApiKey.text?.toString().orEmpty()
+            settings.aiModel = binding.etAiModel.text?.toString()?.trim().orEmpty()
+                .ifEmpty { "deepseek-flash" }
+            toast(R.string.ai_settings_saved)
+            refreshUsage()
+        }
+
+        suppressReminderListener = true
+        binding.swOffPeak.isChecked = usageStore.offPeakReminder
+        suppressReminderListener = false
+        binding.swOffPeak.setOnCheckedChangeListener { _, checked ->
+            if (suppressReminderListener) return@setOnCheckedChangeListener
+            usageStore.offPeakReminder = checked
+            if (!checked) {
+                ReminderScheduler.cancelOffPeak(this)
+                return@setOnCheckedChangeListener
+            }
+            val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            if (needsPermission) {
+                pendingNotificationAction = {
+                    ReminderScheduler.scheduleOffPeak(this)
+                    toast(getString(R.string.reminder_enabled_toast, "00:30"))
+                }
+                notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            } else {
+                ReminderScheduler.scheduleOffPeak(this)
+                toast(getString(R.string.reminder_enabled_toast, "00:30"))
+            }
+        }
+    }
+
+    // ---------------- 用量与计费 ----------------
+
+    private fun setupUsage() {
+        binding.etInputPrice.setText(trimPrice(usageStore.inputPrice))
+        binding.etOutputPrice.setText(trimPrice(usageStore.outputPrice))
+        binding.usageResetRow.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.usage_reset)
+                .setMessage(R.string.usage_reset_confirm)
+                .setPositiveButton(R.string.confirm) { _, _ ->
+                    usageStore.reset()
+                    refreshUsage()
+                    toast(R.string.usage_reset_done)
+                }
+                .setNegativeButton(R.string.cancel, null)
+                .show()
+        }
+        refreshUsage()
+    }
+
+    private fun refreshUsage() {
+        binding.usageSummary.text = getString(
+            R.string.usage_summary,
+            usageStore.requests,
+            usageStore.todayRequests(),
+            usageStore.promptTokens,
+            usageStore.completionTokens,
+            usageStore.todayTokens()
+        )
+        binding.usageCost.text = getString(
+            R.string.usage_cost_value,
+            String.format(Locale.US, "%.4f", usageStore.estimatedCost())
+        )
+        binding.peakStatus.text = getString(
+            R.string.off_peak_status,
+            PeakHours.statusText(),
+            PeakHours.nextSwitchText()
+        )
+    }
+
+    private fun trimPrice(value: Float): String =
+        if (value == value.toInt().toFloat()) value.toInt().toString() else value.toString()
 
     private fun enableReminder() {
         settings.reminderEnabled = true

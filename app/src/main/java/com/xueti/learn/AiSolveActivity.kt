@@ -6,11 +6,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.net.Uri
-import android.util.Base64
 import android.os.Bundle
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.Toast
@@ -22,42 +21,43 @@ import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.SettingsStore
+import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivityAiSolveBinding
 import com.xueti.learn.util.ImageEnhancer
+import com.xueti.learn.util.ImageListController
+import com.xueti.learn.util.PeakHours
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayOutputStream
 import java.io.File
-import java.io.FileOutputStream
 
 /**
  * AI 识图解题：
- * 支持拍照 / 相册选图 / 纯文字输入，可先裁剪与图像增强（灰度、自动对比度、高斯锐化、二值化），
- * 再配合用户自定义提示词提交给 DeepSeek（默认 deepseek-flash 多模态模型）。
+ * - 支持**多张**题目图片（拍照 / 相册多选，最多 6 张），可裁剪与图像增强
+ * - 提示词自定义；API Key / 模型在「设置 → AI 接口」中配置
+ * - 提交后统计 token 用量与预估费用
  */
 class AiSolveActivity : BaseActivity() {
 
     private lateinit var binding: ActivityAiSolveBinding
     private val settings: SettingsStore get() = (application as App).settings
+    private val usageStore by lazy { UsageStore(this) }
 
-    /** 原图（裁剪/增强前的基准）与当前工作图 */
-    private var originalBitmap: Bitmap? = null
-    private var workingBitmap: Bitmap? = null
+    private lateinit var imageController: ImageListController
 
-    /** 当前图片 URI（用于裁剪页输入） */
-    private var currentUri: Uri? = null
+    /** 增强前的备份（用于「还原」） */
+    private var enhanceBackup: Bitmap? = null
     private var cameraUri: Uri? = null
 
     private val takePicture =
         registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
             val uri = cameraUri
-            if (success && uri != null) prepareImage(uri)
+            if (success && uri != null) imageController.addUris(listOf(uri))
         }
 
-    private val pickImage =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            uri?.let { prepareImage(it) }
+    private val pickImages =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+            if (!uris.isNullOrEmpty()) imageController.addUris(uris)
         }
 
     private val cropLauncher =
@@ -65,7 +65,18 @@ class AiSolveActivity : BaseActivity() {
             if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
             val path = result.data?.getStringExtra(CropActivity.EXTRA_OUTPUT_PATH)
                 ?: return@registerForActivityResult
-            prepareImage(Uri.fromFile(File(path)))
+            lifecycleScope.launch {
+                val bitmap = withContext(Dispatchers.IO) {
+                    com.xueti.learn.util.ImageUtils.decodeSampled(
+                        this@AiSolveActivity,
+                        Uri.fromFile(File(path))
+                    )
+                }
+                if (bitmap != null) {
+                    imageController.replaceSelected(bitmap)
+                    binding.statusText.text = getString(R.string.crop_done)
+                }
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,23 +87,44 @@ class AiSolveActivity : BaseActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        binding.etApiKey.setText(settings.deepSeekApiKey)
+        imageController = ImageListController(
+            activity = this,
+            container = binding.imageStrip,
+            onAddRequested = { pickImages.launch(arrayOf("image/*")) },
+            onSelectionChanged = { bitmap ->
+                binding.imagePlaceholder.isVisible = bitmap == null
+                binding.imageActionsRow.isVisible = bitmap != null
+                binding.enhanceTip.isVisible = bitmap != null
+                binding.imageCountHint.isVisible = bitmap != null
+                binding.imageCountHint.text = getString(
+                    R.string.image_count_hint,
+                    imageController.count,
+                    ImageListController.MAX_COUNT
+                )
+                enhanceBackup = null
+            }
+        )
+
         binding.etPrompt.setText(settings.aiPrompt)
-        binding.etModel.setText(settings.aiModel)
-        if (settings.deepSeekApiKey.isBlank()) {
-            binding.statusText.text = getString(R.string.ai_need_key)
-        }
 
         binding.btnCamera.setOnClickListener { launchCamera() }
-        binding.btnGallery.setOnClickListener { pickImage.launch(arrayOf("image/*")) }
-        binding.btnCrop.setOnClickListener { cropImage() }
+        binding.btnGallery.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
+        binding.btnCrop.setOnClickListener { cropSelected() }
         binding.btnEnhance.setOnClickListener { showEnhanceDialog() }
-        binding.btnRestore.setOnClickListener { restoreImage() }
-        binding.btnClearImage.setOnClickListener { clearImage() }
+        binding.btnRestore.setOnClickListener { restoreSelected() }
+        binding.btnClearImage.setOnClickListener { imageController.clear() }
         binding.btnSolve.setOnClickListener { solve() }
         binding.btnCopyResult.setOnClickListener { copyResult() }
-        // 点击预览图可全屏查看原图细节
-        binding.imagePreview.setOnClickListener { showFullPreview() }
+        binding.apiHint.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
+        binding.imageStrip.setOnClickListener { }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        renderApiHint()
+        binding.peakHint.text = "${PeakHours.statusText()}（${PeakHours.nextSwitchText()}）"
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
@@ -103,9 +135,21 @@ class AiSolveActivity : BaseActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    // ---------------- 图片获取与显示 ----------------
+    private fun renderApiHint() {
+        binding.apiHint.text = if (settings.deepSeekApiKey.isBlank()) {
+            getString(R.string.ai_api_not_configured)
+        } else {
+            getString(R.string.ai_api_configured, settings.aiModel)
+        }
+    }
+
+    // ---------------- 图片 ----------------
 
     private fun launchCamera() {
+        if (imageController.isFull()) {
+            toast(R.string.image_limit_reached)
+            return
+        }
         val dir = File(cacheDir, "camera").apply { mkdirs() }
         val file = File(dir, "question_${System.currentTimeMillis()}.jpg")
         val uri = runCatching {
@@ -120,93 +164,32 @@ class AiSolveActivity : BaseActivity() {
             .onFailure { toast(R.string.ai_camera_unavailable) }
     }
 
-    private fun prepareImage(uri: Uri) {
+    private fun cropSelected() {
+        val item = imageController.selected() ?: return
+        // 裁剪需要 URI：把当前位图写入缓存再交给裁剪页
         lifecycleScope.launch {
-            binding.statusText.text = getString(R.string.ai_loading_image)
-            val decoded = withContext(Dispatchers.IO) { decodeImage(uri) }
-            if (decoded == null) {
-                binding.statusText.text = ""
-                toast(R.string.ai_image_read_failed)
+            val file = withContext(Dispatchers.IO) {
+                runCatching {
+                    val dir = File(cacheDir, "crop_input").apply { mkdirs() }
+                    val f = File(dir, "input_${System.currentTimeMillis()}.jpg")
+                    f.outputStream().use { item.bitmap.compress(Bitmap.CompressFormat.JPEG, 95, it) }
+                    f
+                }.getOrNull()
+            }
+            if (file == null) {
+                toast(R.string.crop_failed)
                 return@launch
             }
-            originalBitmap = decoded
-            workingBitmap = decoded
-            currentUri = uri
-            showBitmap(decoded)
-            binding.statusText.text = getString(R.string.ai_image_ready)
+            val intent = Intent(this@AiSolveActivity, CropActivity::class.java)
+                .putExtra(CropActivity.EXTRA_IMAGE_URI, Uri.fromFile(file).toString())
+            runCatching { cropLauncher.launch(intent) }
+                .onFailure { toast(R.string.crop_failed) }
         }
     }
-
-    private fun showBitmap(bitmap: Bitmap) {
-        binding.imagePreview.setImageBitmap(bitmap)
-        binding.imagePreview.isVisible = true
-        binding.imagePlaceholder.isVisible = false
-        binding.imageActionsRow.isVisible = true
-        binding.enhanceTip.isVisible = true
-    }
-
-    /** 全屏查看当前图片，便于确认清晰度 */
-    private fun showFullPreview() {
-        val bitmap = workingBitmap ?: return
-        val imageView = ImageView(this).apply {
-            setImageBitmap(bitmap)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-            setBackgroundColor(Color.BLACK)
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
-            )
-        }
-        val container = FrameLayout(this).apply {
-            setBackgroundColor(Color.BLACK)
-            addView(imageView)
-        }
-        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
-        dialog.setContentView(container)
-        dialog.setCanceledOnTouchOutside(true)
-        imageView.setOnClickListener { dialog.dismiss() }
-        dialog.show()
-    }
-
-    private fun decodeImage(uri: Uri): Bitmap? = runCatching {
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-
-        var sample = 1
-        val maxDimension = maxOf(bounds.outWidth, bounds.outHeight)
-        while (maxDimension / sample > MAX_IMAGE_DIMENSION) sample *= 2
-
-        val options = BitmapFactory.Options().apply { inSampleSize = sample }
-        contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
-    }.getOrNull()
-
-    private fun clearImage() {
-        originalBitmap = null
-        workingBitmap = null
-        currentUri = null
-        binding.imagePreview.setImageDrawable(null)
-        binding.imagePreview.isVisible = false
-        binding.imagePlaceholder.isVisible = true
-        binding.imageActionsRow.isVisible = false
-        binding.enhanceTip.isVisible = false
-        binding.statusText.text = ""
-    }
-
-    // ---------------- 裁剪 ----------------
-
-    private fun cropImage() {
-        val uri = currentUri ?: return
-        val intent = Intent(this, CropActivity::class.java)
-            .putExtra(CropActivity.EXTRA_IMAGE_URI, uri.toString())
-        runCatching { cropLauncher.launch(intent) }
-            .onFailure { toast(R.string.crop_failed) }
-    }
-
-    // ---------------- 图像增强 ----------------
 
     private fun showEnhanceDialog() {
-        if (workingBitmap == null) return
-        val options = ImageEnhancer.Options()
+        if (imageController.selected() == null) return
+        val defaults = ImageEnhancer.Options()
         val labels = arrayOf(
             getString(R.string.enhance_option_gray),
             getString(R.string.enhance_option_contrast),
@@ -214,10 +197,10 @@ class AiSolveActivity : BaseActivity() {
             getString(R.string.enhance_option_binarize)
         )
         val checked = booleanArrayOf(
-            options.grayscale,
-            options.autoContrast,
-            options.sharpen,
-            options.binarize
+            defaults.grayscale,
+            defaults.autoContrast,
+            defaults.sharpen,
+            defaults.binarize
         )
 
         AlertDialog.Builder(this)
@@ -240,7 +223,7 @@ class AiSolveActivity : BaseActivity() {
     }
 
     private fun applyEnhance(options: ImageEnhancer.Options) {
-        val source = originalBitmap ?: return
+        val source = imageController.selectedBitmap() ?: return
         binding.statusText.text = getString(R.string.enhance_processing)
         lifecycleScope.launch {
             val enhanced = withContext(Dispatchers.Default) {
@@ -251,70 +234,64 @@ class AiSolveActivity : BaseActivity() {
                 toast(R.string.enhance_failed)
                 return@launch
             }
-            workingBitmap = enhanced
-            showBitmap(enhanced)
+            enhanceBackup = source
+            imageController.replaceSelected(enhanced)
             binding.statusText.text = getString(R.string.enhance_done)
         }
     }
 
-    private fun restoreImage() {
-        val original = originalBitmap ?: return
-        workingBitmap = original
-        showBitmap(original)
+    private fun restoreSelected() {
+        val backup = enhanceBackup
+        if (backup == null) {
+            toast(R.string.enhance_no_backup)
+            return
+        }
+        imageController.replaceSelected(backup)
+        enhanceBackup = null
         binding.statusText.text = ""
     }
 
     // ---------------- 解题 ----------------
 
     private fun solve() {
-        val apiKey = binding.etApiKey.text?.toString()?.trim().orEmpty()
+        val apiKey = settings.deepSeekApiKey
         val prompt = binding.etPrompt.text?.toString().orEmpty()
-        val model = binding.etModel.text?.toString()?.trim().orEmpty().ifEmpty { "deepseek-flash" }
         val question = binding.etQuestion.text?.toString()?.trim().orEmpty()
-        val bitmap = workingBitmap
+        val images = imageController.base64List()
 
-        if (apiKey.isEmpty()) {
+        if (apiKey.isBlank()) {
             toast(R.string.ai_need_key)
-            binding.etApiKey.requestFocus()
+            startActivity(Intent(this, SettingsActivity::class.java))
             return
         }
-        if (question.isEmpty() && bitmap == null) {
+        if (question.isEmpty() && images.isEmpty()) {
             toast(R.string.ai_need_question)
             return
         }
-
-        settings.deepSeekApiKey = apiKey
         settings.aiPrompt = prompt
-        settings.aiModel = model
 
         setLoading(true)
         binding.statusText.text = getString(R.string.ai_solving)
         lifecycleScope.launch {
-            val base64 = withContext(Dispatchers.IO) { bitmap?.let { toBase64(it) } }
             val result = DeepSeekClient.solve(
                 apiKey = apiKey,
-                model = model,
+                model = settings.aiModel,
                 prompt = prompt,
                 question = question,
-                imageBase64 = base64
+                images = images
             )
             setLoading(false)
+            usageStore.record(result.getOrNull()?.usage)
             result.onSuccess { review ->
                 binding.resultCard.isVisible = true
                 binding.tvResult.text = review.answer
-                binding.statusText.text = getString(R.string.ai_done, review.model)
+                val tokens = review.usage?.totalTokens ?: 0
+                binding.statusText.text = getString(R.string.ai_done_tokens, review.model, tokens)
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.ai_failed, error.message ?: "未知错误")
             }
         }
-    }
-
-    /** 压缩为 JPEG 并转为 base64（不含 data URL 前缀） */
-    private fun toBase64(bitmap: Bitmap): String {
-        val output = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 88, output)
-        return Base64.encodeToString(output.toByteArray(), Base64.NO_WRAP)
     }
 
     private fun setLoading(loading: Boolean) {
@@ -333,20 +310,30 @@ class AiSolveActivity : BaseActivity() {
         toast(R.string.ai_copied)
     }
 
-    private fun toast(resId: Int) {
-        Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
+    /** 全屏查看图片（点击缩略图时使用） */
+    @Suppress("unused")
+    private fun showFullPreview(bitmap: Bitmap) {
+        val imageView = ImageView(this).apply {
+            setImageBitmap(bitmap)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.BLACK)
+            layoutParams = FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            addView(imageView)
+        }
+        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.setContentView(container)
+        dialog.setCanceledOnTouchOutside(true)
+        imageView.setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
-    /** 保存增强后的图片到缓存（便于排查/分享，可选使用） */
-    @Suppress("unused")
-    private fun saveToCache(bitmap: Bitmap): File? = runCatching {
-        val dir = File(cacheDir, "enhanced").apply { mkdirs() }
-        val file = File(dir, "enhanced_${System.currentTimeMillis()}.jpg")
-        FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 92, it) }
-        file
-    }.getOrNull()
-
-    companion object {
-        private const val MAX_IMAGE_DIMENSION = 1600
+    private fun toast(resId: Int) {
+        Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
     }
 }

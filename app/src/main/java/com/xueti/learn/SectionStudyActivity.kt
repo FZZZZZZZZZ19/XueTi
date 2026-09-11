@@ -12,9 +12,11 @@ import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.TextbookStore
+import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivitySectionStudyBinding
 import com.xueti.learn.model.SectionContent
 import com.xueti.learn.model.StudyStyle
+import com.xueti.learn.util.PeakHours
 import kotlinx.coroutines.launch
 
 /**
@@ -26,6 +28,7 @@ class SectionStudyActivity : BaseActivity() {
     private lateinit var binding: ActivitySectionStudyBinding
     private val store by lazy { TextbookStore(this) }
     private val settings: SettingsStore get() = (application as App).settings
+    private val usageStore by lazy { UsageStore(this) }
 
     private val bookId: String get() = intent.getStringExtra(EXTRA_BOOK_ID).orEmpty()
     private val chapterTitle: String get() = intent.getStringExtra(EXTRA_CHAPTER_TITLE).orEmpty()
@@ -58,6 +61,9 @@ class SectionStudyActivity : BaseActivity() {
         )
 
         binding.btnGenerate.setOnClickListener { generate() }
+        binding.contextText.append(
+            "\n${PeakHours.statusText()}"
+        )
 
         if (saved != null) {
             render(saved)
@@ -124,10 +130,16 @@ class SectionStudyActivity : BaseActivity() {
                 style = style
             )
             setLoading(false)
-            result.onSuccess { content ->
-                store.saveContent(bookId, sectionTitle, content)
-                render(content)
-                binding.statusText.text = getString(R.string.section_generated_at, style.label)
+            usageStore.record(result.getOrNull()?.usage)
+            result.onSuccess { sectionResult ->
+                store.saveContent(bookId, sectionTitle, sectionResult.content)
+                render(sectionResult.content)
+                val tokens = sectionResult.usage?.totalTokens ?: 0
+                binding.statusText.text = getString(
+                    R.string.section_generated_tokens,
+                    style.label,
+                    tokens
+                )
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.section_generate_failed, error.message ?: "未知错误")

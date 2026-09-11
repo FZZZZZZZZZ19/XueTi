@@ -22,7 +22,7 @@
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- 题目图片 -->
+            <!-- 题目图片（可多张） -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -31,30 +31,35 @@
                 app:strokeColor="?attr/colorOutlineVariant"
                 app:strokeWidth="1dp">
 
-                <FrameLayout
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="10dp">
 
-                    <ImageView
-                        android:id="@+id/imagePreview"
+                    <HorizontalScrollView
                         android:layout_width="match_parent"
-                        android:layout_height="240dp"
-                        android:adjustViewBounds="true"
-                        android:background="#11000000"
-                        android:contentDescription="@string/ai_solve_title"
-                        android:scaleType="fitCenter"
-                        android:visibility="gone" />
+                        android:layout_height="wrap_content"
+                        android:scrollbars="none">
+
+                        <LinearLayout
+                            android:id="@+id/imageStrip"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:paddingVertical="4dp" />
+                    </HorizontalScrollView>
 
                     <LinearLayout
                         android:id="@+id/imagePlaceholder"
                         android:layout_width="match_parent"
-                        android:layout_height="140dp"
+                        android:layout_height="72dp"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="horizontal">
 
                         <ImageView
-                            android:layout_width="36dp"
-                            android:layout_height="36dp"
+                            android:layout_width="26dp"
+                            android:layout_height="26dp"
                             android:contentDescription="@string/ai_solve_title"
                             android:src="@drawable/ic_image"
                             app:tint="?attr/colorPrimary" />
@@ -62,12 +67,20 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
-                            android:text="@string/ai_image_hint"
+                            android:layout_marginStart="8dp"
+                            android:text="@string/image_multi_hint"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="12sp" />
                     </LinearLayout>
-                </FrameLayout>
+
+                    <TextView
+                        android:id="@+id/imageCountHint"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="11sp"
+                        android:visibility="gone" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <LinearLayout
@@ -82,7 +95,8 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="@string/ai_take_photo" />
+                    android:text="@string/ai_take_photo"
+                    android:textSize="13sp" />
 
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnGallery"
@@ -91,10 +105,10 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:layout_weight="1"
-                    android:text="@string/ai_pick_gallery" />
+                    android:text="@string/ai_pick_gallery_multi"
+                    android:textSize="13sp" />
             </LinearLayout>
 
-            <!-- 图片处理：裁剪 / 增强 / 还原 / 移除 -->
             <LinearLayout
                 android:id="@+id/imageActionsRow"
                 android:layout_width="match_parent"
@@ -169,7 +183,7 @@
                     android:minLines="3" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 提示词（用户自定义） -->
+            <!-- 提示词（自定义） -->
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -185,50 +199,30 @@
                     android:minLines="4" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- API Key -->
-            <com.google.android.material.textfield.TextInputLayout
+            <TextView
+                android:id="@+id/apiHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/ai_key_hint"
-                app:endIconMode="password_toggle">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etApiKey"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="textPassword"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
+                android:layout_marginTop="10dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="8dp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp" />
 
             <TextView
+                android:id="@+id/peakHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="@string/ai_key_tip"
                 android:textColor="?attr/colorOnSurfaceVariant"
                 android:textSize="11sp" />
-
-            <!-- 模型 -->
-            <com.google.android.material.textfield.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:hint="@string/ai_model_hint">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etModel"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:inputType="text"
-                    android:maxLines="1" />
-            </com.google.android.material.textfield.TextInputLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSolve"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="14dp"
                 android:text="@string/ai_solve_button" />
 
             <ProgressBar

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/thumbRoot"
+    android:layout_width="84dp"
+    android:layout_height="84dp"
+    android:layout_marginEnd="4dp"
+    android:background="@drawable/bg_thumb">
+
+    <ImageView
+        android:id="@+id/thumbImage"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="3dp"
+        android:contentDescription="@string/image_add"
+        android:scaleType="centerCrop" />
+
+    <ImageButton
+        android:id="@+id/btnRemoveThumb"
+        android:layout_width="22dp"
+        android:layout_height="22dp"
+        android:layout_gravity="top|end"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/delete"
+        android:padding="2dp"
+        android:src="@drawable/ic_close"
+        app:tint="?attr/colorError" />
+</FrameLayout>

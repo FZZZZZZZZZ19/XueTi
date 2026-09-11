@@ -81,6 +81,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="com.xueti.learn.action.DAILY_REMIND" />
+                <action android:name="com.xueti.learn.action.OFF_PEAK" />
             </intent-filter>
         </receiver>
 

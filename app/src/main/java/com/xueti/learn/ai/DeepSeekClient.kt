@@ -15,26 +15,38 @@ import java.net.URL
 /**
  * DeepSeek 对话补全客户端（OpenAI 兼容格式）。
  *
- * - 图片输入：`deepseek-flash` 模型支持 `image_url` 内容块（base64 data URL），图片只能出现在 user 消息中
- * - 结构化输出：使用 `response_format = json_object`，若模型不支持会自动去掉该参数重试
+ * - 支持**多张图片**（`content` 数组中放多个 `image_url` 块，最多 600 张，单图 ≤32MiB）
+ * - 结构化输出：`response_format = json_object`，模型不支持时自动去掉该参数重试
+ * - 返回值携带 `usage`（token 用量），供计费统计使用
  */
 object DeepSeekClient {
 
     private const val ENDPOINT = "https://api.deepseek.com/chat/completions"
 
-    data class Review(
-        val answer: String,
-        val model: String
+    /** token 用量 */
+    data class Usage(
+        val promptTokens: Int,
+        val completionTokens: Int,
+        val totalTokens: Int,
+        val cacheHitTokens: Int
     )
 
-    // ---------------- 解题（图片 / 文字） ----------------
+    data class Review(val answer: String, val model: String, val usage: Usage?)
+
+    data class OutlineResult(val chapters: List<Chapter>, val usage: Usage?)
+
+    data class SectionResult(val content: SectionContent, val usage: Usage?)
+
+    private data class ChatResult(val text: String, val usage: Usage?)
+
+    // ---------------- 解题（多图 / 文字） ----------------
 
     suspend fun solve(
         apiKey: String,
         model: String,
         prompt: String,
         question: String,
-        imageBase64: String?,
+        images: List<String>,
         imageMime: String = "image/jpeg"
     ): Result<Review> = runCatching {
         val text = buildString {
@@ -42,33 +54,35 @@ object DeepSeekClient {
             if (question.isNotBlank()) {
                 if (isNotEmpty()) append("\n\n")
                 append("【题目】\n").append(question.trim())
-            } else if (imageBase64 != null) {
+            }
+            if (images.isNotEmpty()) {
                 if (isNotEmpty()) append("\n\n")
-                append("【题目】见图片")
+                append("【题目图片】共 ").append(images.size).append(" 张，请综合所有图片作答")
             }
         }
 
-        val answer = if (imageBase64 == null) {
+        val result = if (images.isEmpty()) {
             chat(apiKey, model, text, jsonMode = false).getOrThrow()
         } else {
             val content = JSONArray()
             content.put(JSONObject().put("type", "text").put("text", text))
-            content.put(
-                JSONObject().put("type", "image_url")
-                    .put("image_url", JSONObject().put("url", "data:$imageMime;base64,$imageBase64"))
-            )
+            images.forEach { base64 ->
+                content.put(
+                    JSONObject().put("type", "image_url")
+                        .put(
+                            "image_url",
+                            JSONObject().put("url", "data:$imageMime;base64,$base64")
+                        )
+                )
+            }
             chat(apiKey, model, content, jsonMode = false).getOrThrow()
         }
-        if (answer.isBlank()) error("模型没有返回内容")
-        Review(answer = answer, model = model)
+        if (result.text.isBlank()) error("模型没有返回内容")
+        Review(answer = result.text, model = model, usage = result.usage)
     }
 
     // ---------------- 全书目录 ----------------
 
-    /**
-     * 生成全书目录：书名/出版社/版次（可附大纲文字或大纲照片）
-     * 返回「大章 → 小章」两级目录
-     */
     suspend fun generateOutline(
         apiKey: String,
         model: String,
@@ -76,9 +90,9 @@ object DeepSeekClient {
         publisher: String,
         edition: String,
         outlineText: String?,
-        imageBase64: String?,
+        images: List<String>,
         style: StudyStyle
-    ): Result<List<Chapter>> = runCatching {
+    ): Result<OutlineResult> = runCatching {
         val prompt = buildString {
             append("你是教材目录整理助手。请为我整理这本书的完整目录（大章 → 小章两级）。\n")
             append("书名：《").append(title.ifBlank { "未提供" }).append("》\n")
@@ -88,8 +102,9 @@ object DeepSeekClient {
                 append("\n以下是用户提供的目录/大纲内容，请以此为准整理：\n")
                 append(outlineText.trim()).append("\n")
             }
-            if (imageBase64 != null) {
-                append("\n图片是这本书的目录页照片，请识别其中的章节目录并以此为准。\n")
+            if (images.isNotEmpty()) {
+                append("\n用户提供了 ").append(images.size)
+                append(" 张目录页照片，请识别其中所有章节目录，合并整理（可能有跨页内容）。\n")
             }
             append("\n要求：\n")
             append("1) 尽量完整覆盖全书，一级为大章（如「第一章 绪论」），二级为小章（如「1.1 研究背景」）；\n")
@@ -99,19 +114,21 @@ object DeepSeekClient {
             append("JSON 格式：{\"chapters\":[{\"title\":\"第一章 绪论\",\"sections\":[\"1.1 xxx\",\"1.2 xxx\"]}]}")
         }
 
-        val answer = if (imageBase64 == null) {
+        val result = if (images.isEmpty()) {
             chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
         } else {
             val content = JSONArray()
             content.put(JSONObject().put("type", "text").put("text", prompt))
-            content.put(
-                JSONObject().put("type", "image_url")
-                    .put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$imageBase64"))
-            )
+            images.forEach { base64 ->
+                content.put(
+                    JSONObject().put("type", "image_url")
+                        .put("image_url", JSONObject().put("url", "data:image/jpeg;base64,$base64"))
+                )
+            }
             chat(apiKey, model, content, jsonMode = true).getOrThrow()
         }
 
-        val root = JSONObject(extractJson(answer))
+        val root = JSONObject(extractJson(result.text))
         val chaptersArray = root.optJSONArray("chapters") ?: error("未解析到章节目录")
         val chapters = (0 until chaptersArray.length()).mapNotNull { i ->
             val chapterObj = chaptersArray.optJSONObject(i) ?: return@mapNotNull null
@@ -119,7 +136,6 @@ object DeepSeekClient {
             if (chapterTitle.isEmpty()) return@mapNotNull null
             val sectionsArray = chapterObj.optJSONArray("sections") ?: JSONArray()
             val sections = (0 until sectionsArray.length()).mapNotNull { j ->
-                // 兼容两种返回：字符串数组 或 对象数组 {title:...}
                 val raw = sectionsArray.opt(j)
                 val sectionTitle = when (raw) {
                     is String -> raw.trim()
@@ -131,12 +147,11 @@ object DeepSeekClient {
             Chapter(id = chapterTitle, title = chapterTitle, sections = sections)
         }
         if (chapters.isEmpty()) error("目录为空，请补充书名或上传目录照片后重试")
-        chapters
+        OutlineResult(chapters, result.usage)
     }
 
     // ---------------- 小章三模块内容 ----------------
 
-    /** 生成一个小章的「知识点 / 公式 / 例题」三模块内容 */
     suspend fun generateSectionContent(
         apiKey: String,
         model: String,
@@ -144,7 +159,7 @@ object DeepSeekClient {
         chapterTitle: String,
         sectionTitle: String,
         style: StudyStyle
-    ): Result<SectionContent> = runCatching {
+    ): Result<SectionResult> = runCatching {
         val prompt = buildString {
             append("你是教材讲解助手，请为下面这一小节整理学习内容。\n")
             append("教材：《").append(bookTitle).append("》\n")
@@ -159,33 +174,31 @@ object DeepSeekClient {
             append("JSON 格式：{\"knowledge\":\"...\",\"formulas\":\"...\",\"examples\":\"...\"}")
         }
 
-        val answer = chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
-        val root = JSONObject(extractJson(answer))
-        SectionContent(
-            knowledge = root.optString("knowledge").trim().ifEmpty { "（未生成知识点）" },
-            formulas = root.optString("formulas").trim().ifEmpty { "（未生成公式）" },
-            examples = root.optString("examples").trim().ifEmpty { "（未生成例题）" },
-            styleKey = style.key,
-            generatedAt = System.currentTimeMillis()
+        val result = chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
+        val root = JSONObject(extractJson(result.text))
+        SectionResult(
+            content = SectionContent(
+                knowledge = root.optString("knowledge").trim().ifEmpty { "（未生成知识点）" },
+                formulas = root.optString("formulas").trim().ifEmpty { "（未生成公式）" },
+                examples = root.optString("examples").trim().ifEmpty { "（未生成例题）" },
+                styleKey = style.key,
+                generatedAt = System.currentTimeMillis()
+            ),
+            usage = result.usage
         )
     }
 
     // ---------------- HTTP ----------------
 
-    /**
-     * 发送对话补全请求
-     * @param userContent 纯文本，或 OpenAI 兼容的 content 数组（含图片）
-     */
     private suspend fun chat(
         apiKey: String,
         model: String,
         userContent: Any,
         jsonMode: Boolean
-    ): Result<String> = withContext(Dispatchers.IO) {
+    ): Result<ChatResult> = withContext(Dispatchers.IO) {
         runCatching {
             if (jsonMode) {
                 request(apiKey, model, userContent, jsonMode = true).getOrElse { error ->
-                    // 模型不支持 response_format 时降级为普通请求
                     if (error.message?.contains("response_format") == true ||
                         error.message?.contains("HTTP 400") == true
                     ) {
@@ -205,7 +218,7 @@ object DeepSeekClient {
         model: String,
         userContent: Any,
         jsonMode: Boolean
-    ): Result<String> = runCatching {
+    ): Result<ChatResult> = runCatching {
         val body = JSONObject().apply {
             put("model", model)
             put("stream", false)
@@ -218,7 +231,7 @@ object DeepSeekClient {
         val connection = (URL(ENDPOINT).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 15_000
-            readTimeout = 180_000
+            readTimeout = 300_000
             doOutput = true
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("Authorization", "Bearer $apiKey")
@@ -233,19 +246,29 @@ object DeepSeekClient {
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
             if (code !in 200..299) error(parseErrorMessage(text, code))
-            parseAnswer(text)
+            parseChatResult(text)
         } finally {
             runCatching { connection.disconnect() }
         }
     }
 
-    private fun parseAnswer(raw: String): String {
+    private fun parseChatResult(raw: String): ChatResult {
         val root = JSONObject(raw)
-        val choices = root.optJSONArray("choices") ?: return ""
-        val message = choices.optJSONObject(0)?.optJSONObject("message") ?: return ""
-        val content = message.optString("content").trim()
-        if (content.isNotEmpty()) return content
-        return message.optString("reasoning_content").trim()
+        val choices = root.optJSONArray("choices")
+        val message = choices?.optJSONObject(0)?.optJSONObject("message")
+        val content = message?.optString("content")?.trim().orEmpty()
+        val answer = content.ifEmpty { message?.optString("reasoning_content")?.trim().orEmpty() }
+
+        val usageObj = root.optJSONObject("usage")
+        val usage = usageObj?.let {
+            Usage(
+                promptTokens = it.optInt("prompt_tokens", 0),
+                completionTokens = it.optInt("completion_tokens", 0),
+                totalTokens = it.optInt("total_tokens", 0),
+                cacheHitTokens = it.optInt("prompt_cache_hit_tokens", 0)
+            )
+        }
+        return ChatResult(answer, usage)
     }
 
     private fun parseErrorMessage(raw: String, code: Int): String {
