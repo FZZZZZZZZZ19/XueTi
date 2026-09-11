@@ -1,6 +1,8 @@
 # 学缇 (XueTi)
 
-一款简洁的**英语学习 App**。当前 v1.0 版本实现基础 UI 框架与第一个核心功能：**六级单词每日学习**。
+一款简洁的**英语学习 App**。当前 v1.1 版本实现基础 UI 框架与第一个核心功能：**六级单词每日学习**（内置完整六级词库 6662 词）。
+
+> 📦 **直接下载安装**：[GitHub Releases v1.1](https://github.com/FZZZZZZZZZ19/XueTi/releases/tag/v1.1)（`XueTi-v1.1-debug.apk`，Debug 签名，手机下载后直接安装）
 
 ## 功能特性
 
