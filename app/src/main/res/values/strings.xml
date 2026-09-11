@@ -133,7 +133,7 @@
     <string name="ai_btn_crop">裁剪</string>
     <string name="ai_btn_enhance">图像增强</string>
     <string name="ai_btn_restore">还原原图</string>
-    <string name="ai_enhance_tip">提示：题目照片建议先「裁剪」再用「高斯锐化 / 二值化」增强，文字识别更准</string>
+    <string name="ai_enhance_tip">提示：题目照片建议先「裁剪」再用「高斯锐化 / 二值化」增强，文字识别更准；点击图片可全屏查看</string>
     <string name="crop_title">裁剪图片</string>
     <string name="crop_hint">拖动四角调整裁剪范围，可旋转 90° 后再裁剪</string>
     <string name="crop_rotate">旋转 90°</string>

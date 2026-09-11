@@ -57,24 +57,31 @@ class CropView @JvmOverloads constructor(
     private val handleLength: Float get() = dp(18f)
 
     fun setBitmap(source: Bitmap) {
-        bitmap?.recycle()
+        val old = bitmap
         bitmap = source
-        requestLayout()
-        post { resetCrop() }
+        if (old != null && old !== source) {
+            runCatching { old.recycle() }
+        }
+        // 注意：设置图片不会改变 View 尺寸，onSizeChanged 不会回调，
+        // 必须在这里主动计算图片显示区域，否则裁剪区为空白（全黑）。
+        layoutBitmap()
+        resetCrop()
         invalidate()
     }
 
     fun currentBitmap(): Bitmap? = bitmap
 
-    /** 旋转原图（每次 90°），旋转后重置裁剪框 */
+    /** 旋转原图（每次 90°），旋转后重新适配并重置裁剪框 */
     fun rotate(degrees: Float) {
         val src = bitmap ?: return
         val matrix = Matrix().apply { postRotate(degrees) }
         val rotated = Bitmap.createBitmap(src, 0, 0, src.width, src.height, matrix, true)
         bitmap = rotated
-        if (rotated != src) src.recycle()
-        requestLayout()
-        post { resetCrop() }
+        if (rotated !== src) {
+            runCatching { src.recycle() }
+        }
+        layoutBitmap()
+        resetCrop()
         invalidate()
     }
 
@@ -115,6 +122,12 @@ class CropView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val bmp = bitmap ?: return
+        // 兜底：若尚未计算显示区域（例如尺寸回调顺序异常），此处补齐，避免黑屏
+        if (bitmapRect.width() <= 0f || bitmapRect.height() <= 0f) {
+            layoutBitmap()
+            if (bitmapRect.width() <= 0f) return
+            if (cropRect.width() <= 0f) resetCrop()
+        }
         canvas.drawBitmap(bmp, null, bitmapRect, imagePaint)
 
         // 暗化裁剪框以外区域

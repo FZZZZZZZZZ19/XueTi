@@ -1,14 +1,18 @@
 package com.xueti.learn
 
 import android.app.Activity
+import android.app.Dialog
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.util.Base64
 import android.os.Bundle
+import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -87,6 +91,8 @@ class AiSolveActivity : BaseActivity() {
         binding.btnClearImage.setOnClickListener { clearImage() }
         binding.btnSolve.setOnClickListener { solve() }
         binding.btnCopyResult.setOnClickListener { copyResult() }
+        // 点击预览图可全屏查看原图细节
+        binding.imagePreview.setOnClickListener { showFullPreview() }
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
@@ -137,6 +143,29 @@ class AiSolveActivity : BaseActivity() {
         binding.imagePlaceholder.isVisible = false
         binding.imageActionsRow.isVisible = true
         binding.enhanceTip.isVisible = true
+    }
+
+    /** 全屏查看当前图片，便于确认清晰度 */
+    private fun showFullPreview() {
+        val bitmap = workingBitmap ?: return
+        val imageView = ImageView(this).apply {
+            setImageBitmap(bitmap)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            setBackgroundColor(Color.BLACK)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        }
+        val container = FrameLayout(this).apply {
+            setBackgroundColor(Color.BLACK)
+            addView(imageView)
+        }
+        val dialog = Dialog(this, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
+        dialog.setContentView(container)
+        dialog.setCanceledOnTouchOutside(true)
+        imageView.setOnClickListener { dialog.dismiss() }
+        dialog.show()
     }
 
     private fun decodeImage(uri: Uri): Bitmap? = runCatching {

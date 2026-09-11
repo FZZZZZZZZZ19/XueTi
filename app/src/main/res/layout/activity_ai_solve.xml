@@ -38,9 +38,11 @@
                     <ImageView
                         android:id="@+id/imagePreview"
                         android:layout_width="match_parent"
-                        android:layout_height="200dp"
+                        android:layout_height="240dp"
+                        android:adjustViewBounds="true"
+                        android:background="#11000000"
                         android:contentDescription="@string/ai_solve_title"
-                        android:scaleType="centerCrop"
+                        android:scaleType="fitCenter"
                         android:visibility="gone" />
 
                     <LinearLayout
