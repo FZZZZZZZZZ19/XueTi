@@ -24,6 +24,7 @@ import com.xueti.learn.databinding.ActivitySettingsBinding
 import com.xueti.learn.update.UpdateChecker
 import com.xueti.learn.update.showUpdateDialog
 import com.xueti.learn.util.BackgroundHelper
+import com.xueti.learn.util.ModelCatalog
 import com.xueti.learn.util.PeakHours
 import com.xueti.learn.util.ReminderNotifier
 import com.xueti.learn.util.ThemeStyle
@@ -270,6 +271,7 @@ class SettingsActivity : BaseActivity() {
     private fun setupAi() {
         binding.etApiKey.setText(settings.deepSeekApiKey)
         binding.etAiModel.setText(settings.aiModel)
+        setupModelPicker()
         binding.btnSaveAi.setOnClickListener {
             settings.deepSeekApiKey = binding.etApiKey.text?.toString().orEmpty()
             settings.aiModel = binding.etAiModel.text?.toString()?.trim().orEmpty()
@@ -310,6 +312,62 @@ class SettingsActivity : BaseActivity() {
         val next = PeakHours.nextOffPeakStart()
         val timeFormat = java.text.SimpleDateFormat("M月d日 HH:mm", java.util.Locale.getDefault())
         toast(getString(R.string.reminder_enabled_toast, timeFormat.format(next.time)))
+    }
+
+    // ---------------- 模型自选 ----------------
+
+    /** 模型下拉：内置 + 缓存的可用模型，也可手动输入 */
+    private fun setupModelPicker() {
+        binding.etAiModel.setSimpleItems(
+            ModelCatalog.options(this, settings.aiModel).toTypedArray()
+        )
+        binding.etAiModel.setOnItemClickListener { _, _, _, _ ->
+            persistModelAndPrices()
+            applyModelPrices()
+        }
+        binding.btnRefreshModels.setOnClickListener { refreshModels() }
+    }
+
+    /** 从 API 拉取当前账号可用的模型列表 */
+    private fun refreshModels() {
+        val apiKey = binding.etApiKey.text?.toString()?.trim().orEmpty()
+            .ifEmpty { settings.deepSeekApiKey }
+        if (apiKey.isBlank()) {
+            toast(R.string.ai_need_key)
+            return
+        }
+        binding.btnRefreshModels.text = getString(R.string.ai_models_loading)
+        lifecycleScope.launch {
+            val result = DeepSeekClient.fetchModels(apiKey)
+            binding.btnRefreshModels.text = getString(R.string.ai_model_refresh)
+            result.onSuccess { models ->
+                ModelCatalog.save(this@SettingsActivity, models)
+                binding.etAiModel.setSimpleItems(
+                    ModelCatalog.options(this@SettingsActivity, settings.aiModel).toTypedArray()
+                )
+                toast(getString(R.string.ai_models_loaded, models.size))
+                binding.etAiModel.showDropDown()
+            }.onFailure { error ->
+                toast(getString(R.string.ai_models_failed, error.message ?: "未知错误"))
+            }
+        }
+    }
+
+    private fun persistModelAndPrices() {
+        settings.aiModel = binding.etAiModel.text?.toString()?.trim().orEmpty()
+            .ifEmpty { "deepseek-flash" }
+    }
+
+    /** 切换模型时自动套用该模型的高峰默认单价（用户仍可手动改） */
+    private fun applyModelPrices() {
+        val model = binding.etAiModel.text?.toString()?.trim().orEmpty()
+        val pricing = ModelCatalog.pricingFor(model) ?: return
+        binding.etInputPrice.setText(trimPrice(pricing.first))
+        binding.etOutputPrice.setText(trimPrice(pricing.second))
+        usageStore.inputPrice = pricing.first
+        usageStore.outputPrice = pricing.second
+        toast(getString(R.string.model_price_applied, trimPrice(pricing.first), trimPrice(pricing.second)))
+        refreshUsage()
     }
 
     // ---------------- 用量与计费 ----------------

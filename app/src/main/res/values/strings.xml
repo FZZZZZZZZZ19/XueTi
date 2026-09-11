@@ -261,7 +261,13 @@
     <!-- 设置：AI 接口 -->
     <string name="section_ai">AI 接口（DeepSeek）</string>
     <string name="ai_key_field">DeepSeek API Key（仅保存在本机）</string>
-    <string name="ai_model_field">模型（deepseek-flash 支持图片理解）</string>
+    <string name="ai_model_field">模型（可自选）</string>
+    <string name="ai_model_tip">deepseek-flash 支持图片理解；deepseek-v4-pro 仅文本</string>
+    <string name="ai_model_refresh">刷新可用模型</string>
+    <string name="ai_models_loading">获取中…</string>
+    <string name="ai_models_loaded">已获取 %1$d 个可用模型，点开下拉框选择</string>
+    <string name="ai_models_failed">获取模型列表失败：%1$s</string>
+    <string name="model_price_applied">已按该模型套用高峰默认单价：输入 %1$s / 输出 %2$s 元每百万 tokens（可手动修改）</string>
     <string name="ai_save_settings">保存接口设置</string>
     <string name="ai_settings_saved">接口设置已保存</string>
     <string name="ai_key_tip2">Key 在 platform.deepseek.com 申请；App 不内置任何 Key</string>

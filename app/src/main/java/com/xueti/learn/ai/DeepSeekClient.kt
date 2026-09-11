@@ -23,6 +23,7 @@ object DeepSeekClient {
 
     private const val ENDPOINT = "https://api.deepseek.com/chat/completions"
     private const val BALANCE_ENDPOINT = "https://api.deepseek.com/user/balance"
+    private const val MODELS_ENDPOINT = "https://api.deepseek.com/models"
 
     /** token 用量 */
     data class Usage(
@@ -48,6 +49,38 @@ object DeepSeekClient {
     )
 
     private data class ChatResult(val text: String, val usage: Usage?)
+
+    // ---------------- 可用模型列表 ----------------
+
+    /** 获取当前账号可用的模型：GET /models */
+    suspend fun fetchModels(apiKey: String): Result<List<String>> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val connection = (URL(MODELS_ENDPOINT).openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 15_000
+                    readTimeout = 20_000
+                    setRequestProperty("Accept", "application/json")
+                    setRequestProperty("Authorization", "Bearer $apiKey")
+                }
+                try {
+                    val code = connection.responseCode
+                    val stream = if (code in 200..299) connection.inputStream else connection.errorStream
+                    val text = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                    if (code !in 200..299) error(parseErrorMessage(text, code))
+
+                    val data = JSONObject(text).optJSONArray("data")
+                        ?: error("接口未返回模型列表")
+                    val models = (0 until data.length()).mapNotNull { i ->
+                        data.optJSONObject(i)?.optString("id")?.trim()?.takeIf { it.isNotEmpty() }
+                    }
+                    if (models.isEmpty()) error("可用模型列表为空")
+                    models
+                } finally {
+                    runCatching { connection.disconnect() }
+                }
+            }
+        }
 
     // ---------------- 账户余额 ----------------
 
