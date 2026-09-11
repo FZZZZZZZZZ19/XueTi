@@ -49,6 +49,23 @@ class SettingsStore(context: Context) {
         get() = prefs.getInt(KEY_REMINDER_MINUTE, 0)
         set(value) = prefs.edit().putInt(KEY_REMINDER_MINUTE, value.coerceIn(0, 59)).apply()
 
+    // ---------------- AI 解题（用户自备 Key / 提示词） ----------------
+
+    /** DeepSeek API Key（由用户自行填写） */
+    var deepSeekApiKey: String
+        get() = prefs.getString(KEY_DEEPSEEK_KEY, "").orEmpty()
+        set(value) = prefs.edit().putString(KEY_DEEPSEEK_KEY, value.trim()).apply()
+
+    /** 用户自定义提示词 */
+    var aiPrompt: String
+        get() = prefs.getString(KEY_AI_PROMPT, null) ?: DEFAULT_AI_PROMPT
+        set(value) = prefs.edit().putString(KEY_AI_PROMPT, value).apply()
+
+    /** 使用的模型（deepseek-flash 支持图片理解） */
+    var aiModel: String
+        get() = prefs.getString(KEY_AI_MODEL, null) ?: "deepseek-flash"
+        set(value) = prefs.edit().putString(KEY_AI_MODEL, value.trim().ifEmpty { "deepseek-flash" }).apply()
+
     companion object {
         private const val KEY_THEME_STYLE = "theme_style"
         private const val KEY_BACKGROUND_URI = "background_uri"
@@ -58,5 +75,17 @@ class SettingsStore(context: Context) {
         private const val KEY_REMINDER_ENABLED = "reminder_enabled"
         private const val KEY_REMINDER_HOUR = "reminder_hour"
         private const val KEY_REMINDER_MINUTE = "reminder_minute"
+        private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
+        private const val KEY_AI_PROMPT = "ai_prompt"
+        private const val KEY_AI_MODEL = "ai_model"
+
+        /** 默认提示词（用户可在界面中修改） */
+        const val DEFAULT_AI_PROMPT =
+            "你是一位耐心的辅导老师。请根据用户提供的题目（文字或图片）：\n" +
+                "1) 先给出正确答案；\n" +
+                "2) 再分步骤讲解解题思路与关键知识点；\n" +
+                "3) 如果是英语题，请说明词汇/语法考点并给出例句；\n" +
+                "4) 指出容易出错的地方。\n" +
+                "用中文简洁回答，公式或代码用等宽文本排版。"
     }
 }

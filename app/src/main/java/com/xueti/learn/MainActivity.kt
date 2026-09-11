@@ -39,6 +39,9 @@ class MainActivity : BaseActivity() {
         binding.btnStartStudy.setOnClickListener {
             startActivity(Intent(this, StudyActivity::class.java))
         }
+        binding.cardAiSolve.setOnClickListener {
+            startActivity(Intent(this, AiSolveActivity::class.java))
+        }
         binding.cardWordList.setOnClickListener {
             startActivity(Intent(this, WordListActivity::class.java))
         }

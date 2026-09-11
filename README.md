@@ -1,8 +1,8 @@
 # 学缇 (XueTi)
 
-一款简洁的**英语学习 App**。v1.2 版本包含基础 UI 框架、核心功能**六级单词每日学习**（内置完整六级词库 6662 词），以及外观定制、应用内更新与每日提醒。
+一款简洁的**英语学习 App**。v1.3 版本包含基础 UI 框架、核心功能**六级单词每日学习**（内置完整六级词库 6662 词）、**AI 识图解题**，以及外观定制、应用内更新与每日提醒。
 
-> 📦 **直接下载安装**：[GitHub Releases v1.2](https://github.com/FZZZZZZZZZ19/XueTi/releases/tag/v1.2)（`XueTi-v1.2-debug.apk`，Debug 签名，手机下载后直接安装）
+> 📦 **直接下载安装**：[GitHub Releases v1.3](https://github.com/FZZZZZZZZZ19/XueTi/releases/tag/v1.3)（`XueTi-v1.3-debug.apk`，Debug 签名，手机下载后直接安装）
 
 ## 功能特性
 
@@ -17,7 +17,8 @@
 | **界面风格**（v1.2） | 5 套配色自选：默认紫 / 海洋蓝 / 森林绿 / 日落橙 / 樱花粉（含深色模式适配，切换立即生效） |
 | **自定义背景图**（v1.2） | 从相册选择图片作为全局背景，可调「淡化程度」（0-95）保证文字可读，一键恢复默认背景 |
 | **应用内更新**（v1.2） | 直连 GitHub 仓库 Release 检查新版本：显示版本号与更新说明 → 应用内下载 APK → 调起系统安装；支持启动时自动检查（每天一次，可关闭） |
-| **每日提醒**（v1.2） | 通知栏每日提醒学习：自定义提醒时间，通知内容显示今日进度与剩余词数，点击直达学习页 |
+| **AI 识图解题**（v1.3） | 拍照 / 相册选图 / 纯文字三种出题方式；**用户自备 DeepSeek API Key 并自定义提示词**；默认使用支持图片理解的 `deepseek-flash` 模型，答案可一键复制 |
+| **每日提醒** | 通知栏每日提醒学习：自定义提醒时间，通知内容显示今日进度与剩余词数，点击直达学习页；v1.3 改用 AlarmManager + 开机自动恢复（国产 ROM 后台清理下更可靠），并提供**测试提醒**与后台运行排障入口 |
 | 界面 | Material 3 风格，支持深色模式 |
 
 ## 内置词库（完整六级词汇）
@@ -42,10 +43,10 @@
 
 ### 已附带可安装 APK
 
-`apk/XueTi-v1.2-debug.apk`（Debug 签名，直接安装到手机）
+`apk/XueTi-v1.3-debug.apk`（Debug 签名，直接安装到手机）
 
 ```bash
-adb install -r apk/XueTi-v1.2-debug.apk
+adb install -r apk/XueTi-v1.3-debug.apk
 ```
 
 ### 从源码构建
@@ -68,8 +69,10 @@ app/src/main/
 │   ├── MainActivity.kt                  # 首页（今日进度 + 功能入口 + 启动自动检查更新）
 │   ├── StudyActivity.kt                 # 每日单词学习（卡片翻转 / 认识度判断 / 重新排队）
 │   ├── WordListActivity.kt              # 我的词库（已学单词列表）
+│   ├── AiSolveActivity.kt               # AI 识图解题（拍照 / 选图 / 文字 + 自定义提示词）
 │   ├── SettingsActivity.kt              # 设置中心（目标/提醒/外观/更新/数据）
 │   ├── adapter/WordListAdapter.kt
+│   ├── ai/DeepSeekClient.kt             # DeepSeek 对话补全（文本 + 图片 base64）
 │   ├── base/BaseActivity.kt             # 套用界面风格 + 自定义背景
 │   ├── data/
 │   │   ├── WordRepository.kt            # 词库流式解析（JsonReader，异步 + 缓存）
@@ -83,12 +86,28 @@ app/src/main/
 │   ├── util/
 │   │   ├── ThemeStyle.kt                # 5 套界面风格
 │   │   ├── BackgroundHelper.kt          # 背景图解码（降采样）+ 蒙版
-│   │   └── NotificationHelper.kt        # 通知渠道
+│   │   ├── NotificationHelper.kt        # 通知渠道
+│   │   └── ReminderNotifier.kt          # 提醒通知构建（定时/测试共用）
 │   └── work/
-│       ├── ReminderWorker.kt            # 每日提醒通知
-│       └── ReminderScheduler.kt         # WorkManager 周期调度
+│       ├── ReminderScheduler.kt         # AlarmManager 每日闹钟调度
+│       ├── ReminderReceiver.kt          # 闹钟触发 → 发通知 + 续期
+│       └── BootReceiver.kt              # 开机/更新后恢复闹钟
 └── res/                                 # 布局、5 套主题（含 values-night）、图标、字符串
 ```
+
+## AI 识图解题使用说明
+
+1. 到 [platform.deepseek.com](https://platform.deepseek.com/) 申请 API Key（APP **不内置**任何 Key，Key 只保存在本机）
+2. 首页 →「AI 识图解题」→ 填写 API Key
+3. 三种出题方式（可组合）：
+   - **拍照**：直接拍题目照片
+   - **相册**：选择已有题目图片
+   - **文字**：手动输入题目（也可与图片同时提交）
+4. **提示词由你自己写**（已内置一份默认提示词，可随意修改；会随题目一起发送）
+5. 点「开始解题」→ 显示解答，可一键复制
+
+> 默认模型 `deepseek-flash` 支持图片理解（OpenAI 兼容格式，图片以 base64 内联发送，最长边自动压缩到 1600px）。
+> 也可在界面里改成其它模型名。图片使用限制参考 [DeepSeek 图像理解文档](https://api-docs.deepseek.com/zh-cn/guides/vision/)（支持 JPEG/PNG/GIF/WebP，单图 ≤32MiB）。
 
 ## 技术要点
 
@@ -114,3 +133,4 @@ app/src/main/
 | v1.0 | 基础 UI（首页 / 我的词库 / 设置）+ 六级单词每日学习功能（示例词库 103 词） |
 | v1.1 | **完整六级词库 6662 词**（含四级基础，97% 带例句）；词库改为流式解析 + 异步加载 + 冷启动预载；无例句词条自动隐藏例句区 |
 | v1.2 | **界面风格自选**（5 套配色，含深色适配）；**自定义背景图**（选图 + 淡化程度 + 恢复默认）；**应用内更新**（直连 GitHub Release 检查 → 下载 → 安装，支持启动自动检查）；**每日通知提醒**（自定义时间 + 进度提示 + 点击进学习页） |
+| v1.3 | **AI 识图解题**（拍照/相册/文字 + 用户自备 DeepSeek Key 与自定义提示词，`deepseek-flash` 图片理解）；**提醒可靠性修复**：WorkManager 改为 AlarmManager + 开机自动恢复闹钟，新增「测试提醒」与后台运行排障入口；通知渠道升级为高重要性（横幅+提示音）；移除 WorkManager 依赖，权限更精简 |

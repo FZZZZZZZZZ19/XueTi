@@ -1,4 +1,4 @@
-package com.xueti.learn.work
+package com.xueti.learn.util
 
 import android.Manifest
 import android.app.PendingIntent
@@ -9,30 +9,24 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.work.Worker
-import androidx.work.WorkerParameters
 import com.xueti.learn.R
 import com.xueti.learn.StudyActivity
 import com.xueti.learn.data.ProgressStore
-import com.xueti.learn.util.NotificationHelper
 
-/**
- * 每日学习提醒：读取今日进度并推送通知，点击直接进入学习页。
- */
-class ReminderWorker(
-    context: Context,
-    params: WorkerParameters
-) : Worker(context, params) {
+/** 每日学习提醒通知的构建与发送（定时触发与「测试提醒」共用） */
+object ReminderNotifier {
 
-    override fun doWork(): Result {
-        val context = applicationContext
-        // Android 13+ 未授予通知权限时直接跳过
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+    const val NOTIFICATION_ID = 1001
+
+    fun canNotify(context: Context): Boolean {
+        val permissionOk = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
             PackageManager.PERMISSION_GRANTED
-        ) {
-            return Result.success()
-        }
+        return permissionOk && NotificationManagerCompat.from(context).areNotificationsEnabled()
+    }
+
+    fun show(context: Context, test: Boolean = false) {
+        if (!canNotify(context)) return
 
         val store = ProgressStore(context)
         val goal = store.dailyGoal
@@ -44,6 +38,9 @@ class ReminderWorker(
         } else {
             context.getString(R.string.notify_text_done)
         }
+        val title = context.getString(
+            if (test) R.string.notify_title_test else R.string.notify_title
+        )
 
         val intent = Intent(context, StudyActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -55,12 +52,15 @@ class ReminderWorker(
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
+        NotificationHelper.ensureChannel(context)
+
         val notification = NotificationCompat.Builder(context, NotificationHelper.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(context.getString(R.string.notify_title))
+            .setContentTitle(title)
             .setContentText(text)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
@@ -68,10 +68,5 @@ class ReminderWorker(
         runCatching {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
         }
-        return Result.success()
-    }
-
-    companion object {
-        const val NOTIFICATION_ID = 1001
     }
 }

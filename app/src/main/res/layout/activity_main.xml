@@ -116,7 +116,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 功能入口 -->
+            <!-- 第一行：AI 解题 / 我的词库 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -124,10 +124,57 @@
                 android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardWordList"
+                    android:id="@+id/cardAiSolve"
                     android:layout_width="0dp"
                     android:layout_height="124dp"
                     android:layout_marginEnd="7dp"
+                    android:layout_weight="1"
+                    android:clickable="true"
+                    android:focusable="true"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:padding="12dp">
+
+                        <ImageView
+                            android:layout_width="28dp"
+                            android:layout_height="28dp"
+                            android:contentDescription="@string/ai_solve_title"
+                            android:src="@drawable/ic_ai"
+                            app:tint="?attr/colorPrimary" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/ai_solve_title"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:gravity="center"
+                            android:maxLines="2"
+                            android:text="@string/ai_card_sub"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardWordList"
+                    android:layout_width="0dp"
+                    android:layout_height="124dp"
+                    android:layout_marginStart="7dp"
                     android:layout_weight="1"
                     android:clickable="true"
                     android:focusable="true"
@@ -169,12 +216,20 @@
                             android:textSize="11sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
+
+            <!-- 第二行：学习统计 / 设置 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardStats"
                     android:layout_width="0dp"
                     android:layout_height="124dp"
-                    android:layout_marginStart="7dp"
+                    android:layout_marginEnd="7dp"
                     android:layout_weight="1"
                     android:clickable="true"
                     android:focusable="true"
@@ -216,19 +271,12 @@
                             android:textSize="11sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
-                android:orientation="horizontal">
 
                 <com.google.android.material.card.MaterialCardView
                     android:id="@+id/cardSettings"
                     android:layout_width="0dp"
                     android:layout_height="124dp"
-                    android:layout_marginEnd="7dp"
+                    android:layout_marginStart="7dp"
                     android:layout_weight="1"
                     android:clickable="true"
                     android:focusable="true"
@@ -270,38 +318,45 @@
                             android:textSize="11sp" />
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
 
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/cardAbout"
-                    android:layout_width="0dp"
-                    android:layout_height="124dp"
-                    android:layout_marginStart="7dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    app:cardCornerRadius="18dp"
-                    app:cardElevation="0dp"
-                    app:strokeColor="?attr/colorOutlineVariant"
-                    app:strokeWidth="1dp">
+            <!-- 关于 -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardAbout"
+                android:layout_width="match_parent"
+                android:layout_height="84dp"
+                android:layout_marginTop="14dp"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="0dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@string/about_title"
+                        android:src="@drawable/ic_info"
+                        app:tint="?attr/colorPrimary" />
 
                     <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:orientation="vertical"
-                        android:padding="12dp">
-
-                        <ImageView
-                            android:layout_width="28dp"
-                            android:layout_height="28dp"
-                            android:contentDescription="@string/about_title"
-                            android:src="@drawable/ic_info"
-                            app:tint="?attr/colorPrimary" />
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="8dp"
                             android:text="@string/about_title"
                             android:textSize="14sp"
                             android:textStyle="bold" />
@@ -309,15 +364,13 @@
                         <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:gravity="center"
-                            android:maxLines="2"
+                            android:layout_marginTop="2dp"
                             android:text="@string/about_slogan"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="11sp" />
                     </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

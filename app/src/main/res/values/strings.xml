@@ -64,8 +64,41 @@
     <string name="notify_channel_name">每日学习提醒</string>
     <string name="notify_channel_desc">每天提醒你学习六级单词</string>
     <string name="notify_title">学缇 · 该背单词啦</string>
+    <string name="notify_title_test">学缇 · 测试提醒</string>
     <string name="notify_text_remain">今日已学 %1$d/%2$d，还差 %3$d 个词，加油！</string>
     <string name="notify_text_done">今日目标已完成，可以复习一下学过的词～</string>
+    <string name="test_reminder">测试提醒</string>
+    <string name="test_reminder_sent">测试通知已发送，请查看通知栏</string>
+    <string name="notifications_disabled">通知被系统禁用：请在系统「通知设置」中允许学缇发送通知</string>
+    <string name="reminder_next">下次提醒：%1$s</string>
+    <string name="reminder_help">提醒收不到？（后台运行设置）</string>
+    <string name="reminder_help_toast">请在系统设置中允许「学缇」自启动 / 后台运行，并关闭电池优化</string>
+
+    <!-- AI 识图解题 -->
+    <string name="ai_solve_title">AI 识图解题</string>
+    <string name="ai_card_sub">拍照 / 输入 / 选图</string>
+    <string name="ai_image_hint">拍照或选择题目图片（可选）</string>
+    <string name="ai_take_photo">拍照</string>
+    <string name="ai_pick_gallery">从相册选择</string>
+    <string name="ai_clear_image">移除图片</string>
+    <string name="ai_question_hint">题目文本（可选，与图片可同时提交）</string>
+    <string name="ai_prompt_hint">提示词（自定义，随题目一起发送给 AI）</string>
+    <string name="ai_key_hint">DeepSeek API Key（仅保存在本机）</string>
+    <string name="ai_key_tip">在 platform.deepseek.com 申请 API Key；APP 不内置任何 Key</string>
+    <string name="ai_model_hint">模型（默认 deepseek-flash，支持图片理解）</string>
+    <string name="ai_solve_button">开始解题</string>
+    <string name="ai_solving">正在解题…</string>
+    <string name="ai_result_title">解答</string>
+    <string name="ai_copy">复制</string>
+    <string name="ai_copied">已复制到剪贴板</string>
+    <string name="ai_need_key">请先填写 DeepSeek API Key</string>
+    <string name="ai_need_question">请输入题目文本或选择一张题目图片</string>
+    <string name="ai_loading_image">正在处理图片…</string>
+    <string name="ai_image_ready">图片已就绪，可以开始解题</string>
+    <string name="ai_image_read_failed">图片读取失败，请换一张试试</string>
+    <string name="ai_camera_unavailable">无法调用相机</string>
+    <string name="ai_done">完成（模型：%1$s）</string>
+    <string name="ai_failed">解题失败：%1$s</string>
 
     <!-- 外观：界面风格与背景 -->
     <string name="ui_style">界面风格</string>

@@ -4,8 +4,10 @@ import android.Manifest
 import android.app.TimePickerDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
@@ -20,6 +22,7 @@ import com.xueti.learn.databinding.ActivitySettingsBinding
 import com.xueti.learn.update.UpdateChecker
 import com.xueti.learn.update.showUpdateDialog
 import com.xueti.learn.util.BackgroundHelper
+import com.xueti.learn.util.ReminderNotifier
 import com.xueti.learn.util.ThemeStyle
 import com.xueti.learn.work.ReminderScheduler
 import kotlinx.coroutines.launch
@@ -149,6 +152,42 @@ class SettingsActivity : BaseActivity() {
                 true
             ).show()
         }
+
+        // 立即发一条测试通知，用于确认通知权限/渠道是否正常
+        binding.testReminderRow.setOnClickListener { testReminder() }
+        // 国产 ROM 后台限制排障入口
+        binding.reminderHelpRow.setOnClickListener { openReminderHelp() }
+    }
+
+    private fun testReminder() {
+        if (ReminderNotifier.canNotify(this)) {
+            ReminderNotifier.show(this, test = true)
+            toast(R.string.test_reminder_sent)
+            return
+        }
+        val permissionMissing = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        if (permissionMissing) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            toast(R.string.notifications_disabled)
+        }
+    }
+
+    private fun openReminderHelp() {
+        toast(R.string.reminder_help_toast)
+        val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+        runCatching { startActivity(intent) }.onFailure {
+            runCatching {
+                startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", packageName, null)
+                    )
+                )
+            }
+        }
     }
 
     private fun requestOrEnableReminder() {
@@ -185,6 +224,10 @@ class SettingsActivity : BaseActivity() {
     private fun updateReminderTimeText() {
         binding.reminderTimeValue.text =
             formatTime(settings.reminderHour, settings.reminderMinute)
+        binding.reminderNextText.text = getString(
+            R.string.reminder_next,
+            ReminderScheduler.nextTriggerText(settings.reminderHour, settings.reminderMinute)
+        )
     }
 
     private fun formatTime(hour: Int, minute: Int): String =

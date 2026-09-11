@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 检查更新需要联网 -->
+    <!-- 检查更新 / AI 解题需要联网 -->
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Android 13+ 通知权限 -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- 应用内下载 APK 后触发安装 -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- 重启后恢复每日提醒闹钟 -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:name=".App"
@@ -35,10 +37,34 @@
             android:exported="false" />
 
         <activity
+            android:name=".AiSolveActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".SettingsActivity"
             android:exported="false" />
 
-        <!-- 供应用内下载的 APK 安装使用 -->
+        <!-- 每日提醒闹钟触发 -->
+        <receiver
+            android:name=".work.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.xueti.learn.action.DAILY_REMIND" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 开机 / 应用更新后恢复闹钟 -->
+        <receiver
+            android:name=".work.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- 供应用内下载的 APK 安装、拍照输出使用 -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
