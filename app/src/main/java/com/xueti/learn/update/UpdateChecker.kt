@@ -69,7 +69,14 @@ object UpdateChecker {
         }
     }
 
-    /** 语义化版本比较：latest 是否比 current 新 */
+    /**
+     * 语义化版本比较：latest 是否比 current 新。
+     *
+     * ⚠️ 版本号命名约定（务必遵守，否则老版本 App 检测不到更新）：
+     * 本函数按「点分段 + 每段按整数比较」，因此段号必须保持单调递增，
+     * 例如 1.7 → 1.71 → 1.72 → 1.73 → **1.80**（不能写 1.8，因为 8 < 73）。
+     * 之后的版本继续 1.81 / 1.82 …，或直接跳到 2.0。
+     */
     fun isNewer(latest: String, current: String): Boolean {
         val a = latest.split('.').mapNotNull { it.trim().toIntOrNull() }
         val b = current.split('.').mapNotNull { it.trim().toIntOrNull() }
