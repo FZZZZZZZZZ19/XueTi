@@ -295,15 +295,21 @@ class SettingsActivity : BaseActivity() {
                 PackageManager.PERMISSION_GRANTED
             if (needsPermission) {
                 pendingNotificationAction = {
-                    ReminderScheduler.scheduleOffPeak(this)
-                    toast(getString(R.string.reminder_enabled_toast, "00:30"))
+                    scheduleOffPeakReminder()
                 }
                 notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
             } else {
-                ReminderScheduler.scheduleOffPeak(this)
-                toast(getString(R.string.reminder_enabled_toast, "00:30"))
+                scheduleOffPeakReminder()
             }
         }
+    }
+
+    /** 开启空闲时段提醒并给出下一次提醒时间 */
+    private fun scheduleOffPeakReminder() {
+        ReminderScheduler.scheduleOffPeak(this)
+        val next = PeakHours.nextOffPeakStart()
+        val timeFormat = java.text.SimpleDateFormat("M月d日 HH:mm", java.util.Locale.getDefault())
+        toast(getString(R.string.reminder_enabled_toast, timeFormat.format(next.time)))
     }
 
     // ---------------- 用量与计费 ----------------
@@ -342,7 +348,8 @@ class SettingsActivity : BaseActivity() {
         binding.peakStatus.text = getString(
             R.string.off_peak_status,
             PeakHours.statusText(),
-            PeakHours.nextSwitchText()
+            PeakHours.nextSwitchText(),
+            PeakHours.scheduleDescription()
         )
     }
 

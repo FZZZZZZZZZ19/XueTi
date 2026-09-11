@@ -72,7 +72,7 @@ class TextbookCreateActivity : BaseActivity() {
         binding.btnCamera.setOnClickListener { launchCamera() }
         binding.btnGallery.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
         binding.btnGenerate.setOnClickListener { generateOutline() }
-        binding.peakHint.text = "${PeakHours.statusText()}（${PeakHours.nextSwitchText()}）"
+        binding.peakHint.text = "${PeakHours.statusText()}；${PeakHours.nextSwitchText()}"
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {

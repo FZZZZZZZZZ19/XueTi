@@ -124,7 +124,7 @@ class AiSolveActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         renderApiHint()
-        binding.peakHint.text = "${PeakHours.statusText()}（${PeakHours.nextSwitchText()}）"
+        binding.peakHint.text = "${PeakHours.statusText()}；${PeakHours.nextSwitchText()}"
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {

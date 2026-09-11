@@ -3,39 +3,52 @@ package com.xueti.learn.util
 import java.util.Calendar
 
 /**
- * DeepSeek 峰谷时段（错峰优惠）计算。
+ * DeepSeek 高峰 / 空闲时段（官方定价页，2026 版）：
  *
- * 官方优惠时段：**UTC 16:30 – 次日 00:30**，换算北京时间（UTC+8）为 **00:30 – 08:30**。
- * 该时段内 deepseek-chat 约 5 折、deepseek-reasoner 约 2.5 折（以官方最新公告为准）。
+ * > 空闲时段价格为高峰时段价格的一半。
+ * > **高峰时段为北京时间周一至周五 9:00 - 12:00、14:00 - 18:00（其余为空闲时段）。**
+ *
+ * 也就是说：工作日午休（12:00-14:00）、18:00 之后、以及周末全天都属于**空闲时段**（约 5 折）。
  */
 object PeakHours {
 
-    /** 谷时开始（北京时间 00:30） */
-    private const val OFF_PEAK_START_MINUTES = 30
+    /** 高峰时段（分钟数区间，左闭右开）：9:00-12:00、14:00-18:00 */
+    private val PEAK_BLOCKS = listOf(9 * 60 to 12 * 60, 14 * 60 to 18 * 60)
 
-    /** 谷时结束（北京时间 08:30） */
-    private const val OFF_PEAK_END_MINUTES = 8 * 60 + 30
+    /** 工作日内的所有时段分界点（分钟数） */
+    private val WEEKDAY_BOUNDARIES = listOf(9 * 60, 12 * 60, 14 * 60, 18 * 60)
 
     fun now(): Calendar = Calendar.getInstance()
 
-    /** 当前是否处于谷时（优惠时段） */
-    fun isOffPeak(calendar: Calendar = now()): Boolean {
-        val minutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-        return minutes >= OFF_PEAK_START_MINUTES && minutes < OFF_PEAK_END_MINUTES
+    private fun minutesOf(calendar: Calendar): Int =
+        calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+
+    private fun isWeekday(calendar: Calendar): Boolean {
+        val day = calendar.get(Calendar.DAY_OF_WEEK)
+        return day != Calendar.SATURDAY && day != Calendar.SUNDAY
     }
 
-    /** 状态文案：「现在是谷时（00:30-08:30，约 5 折）」/「现在是峰时」 */
-    fun statusText(): String =
-        if (isOffPeak()) {
-            "现在是【谷时】00:30–08:30，API 价格约 5 折，适合批量生成"
+    /** 当前是否处于高峰时段（工作日 9:00-12:00、14:00-18:00） */
+    fun isPeak(calendar: Calendar = now()): Boolean {
+        if (!isWeekday(calendar)) return false
+        val minutes = minutesOf(calendar)
+        return PEAK_BLOCKS.any { (start, end) -> minutes >= start && minutes < end }
+    }
+
+    /** 当前是否处于空闲时段（价格约为高峰的一半） */
+    fun isOffPeak(calendar: Calendar = now()): Boolean = !isPeak(calendar)
+
+    /** 状态文案 */
+    fun statusText(calendar: Calendar = now()): String =
+        if (isPeak(calendar)) {
+            "现在是【高峰时段】标准价（工作日 9:00-12:00、14:00-18:00）"
         } else {
-            "现在是【峰时】标准价；谷时 00:30–08:30 约 5 折"
+            "现在是【空闲时段】价格约为高峰的一半，适合批量生成"
         }
 
-    /** 距离下一次时段切换还有多久，如「距离谷时开始还有 3 小时 12 分」 */
+    /** 距离下一次时段切换还有多久 */
     fun nextSwitchText(calendar: Calendar = now()): String {
-        val offPeak = isOffPeak(calendar)
-        val target = if (offPeak) nextOffPeakEnd(calendar) else nextOffPeakStart(calendar)
+        val target = nextTransition(calendar)
         val diff = target.timeInMillis - calendar.timeInMillis
         val hours = diff / (60 * 60 * 1000)
         val minutes = (diff / (60 * 1000)) % 60
@@ -43,33 +56,66 @@ object PeakHours {
             hours > 0 -> "${hours} 小时 ${minutes} 分"
             else -> "${minutes} 分"
         }
-        return if (offPeak) "距离恢复峰时还有 $remaining" else "距离谷时开始还有 $remaining"
+        val nextIsPeak = isPeak(target)
+        val nextState = if (nextIsPeak) "高峰时段" else "空闲时段"
+        return "距离进入$nextState 还有 $remaining"
     }
 
-    /** 下一次谷时开始时间（用于定时提醒） */
+    /**
+     * 下一次时段切换时刻：
+     * 工作日取当天的 9:00 / 12:00 / 14:00 / 18:00 中最近的一个未来时刻；
+     * 否则顺延到下一个工作日的 9:00。
+     */
+    fun nextTransition(calendar: Calendar = now()): Calendar {
+        val result = calendar.clone() as Calendar
+        if (isWeekday(calendar)) {
+            val minutes = minutesOf(calendar)
+            WEEKDAY_BOUNDARIES.firstOrNull { minutes < it }?.let { boundary ->
+                return result.apply {
+                    set(Calendar.HOUR_OF_DAY, boundary / 60)
+                    set(Calendar.MINUTE, boundary % 60)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+            }
+        }
+        // 当天已无切换点（或今天是周末）→ 找下一个工作日的 9:00
+        do {
+            result.add(Calendar.DAY_OF_YEAR, 1)
+        } while (!isWeekday(result))
+        return result.apply {
+            set(Calendar.HOUR_OF_DAY, 9)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+    }
+
+    /**
+     * 下一次**空闲时段开始**时刻（用于「空闲时段开始提醒」）：
+     * 即最近一个即将结束的高峰时段末点（工作日 12:00 或 18:00）。
+     */
     fun nextOffPeakStart(calendar: Calendar = now()): Calendar {
-        val target = (calendar.clone() as Calendar).apply {
-            set(Calendar.HOUR_OF_DAY, OFF_PEAK_START_MINUTES / 60)
-            set(Calendar.MINUTE, OFF_PEAK_START_MINUTES % 60)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
+        val cursor = calendar.clone() as Calendar
+        // 最多向后找 8 天，逐个检查工作日 12:00 / 18:00
+        repeat(8) {
+            if (isWeekday(cursor)) {
+                listOf(12 * 60, 18 * 60).forEach { boundary ->
+                    val candidate = (cursor.clone() as Calendar).apply {
+                        set(Calendar.HOUR_OF_DAY, boundary / 60)
+                        set(Calendar.MINUTE, boundary % 60)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    if (candidate.after(calendar)) return candidate
+                }
+            }
+            cursor.add(Calendar.DAY_OF_YEAR, 1)
         }
-        if (!target.after(calendar)) {
-            target.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return target
+        return nextTransition(calendar)
     }
 
-    private fun nextOffPeakEnd(calendar: Calendar): Calendar {
-        val target = (calendar.clone() as Calendar).apply {
-            set(Calendar.HOUR_OF_DAY, OFF_PEAK_END_MINUTES / 60)
-            set(Calendar.MINUTE, OFF_PEAK_END_MINUTES % 60)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-        if (!target.after(calendar)) {
-            target.add(Calendar.DAY_OF_YEAR, 1)
-        }
-        return target
-    }
+    /** 高峰时段说明（用于设置页文案） */
+    fun scheduleDescription(): String =
+        "高峰：工作日 9:00-12:00、14:00-18:00；其余（含午休、18:00 后、周末）为空闲时段，价格约为高峰的一半。"
 }

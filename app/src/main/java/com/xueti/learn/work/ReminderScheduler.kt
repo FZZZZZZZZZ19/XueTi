@@ -36,7 +36,7 @@ object ReminderScheduler {
         }
     }
 
-    /** 谷时（优惠时段）开始提醒：每天 00:30 */
+    /** 空闲时段（优惠时段）开始提醒：最近一个高峰时段结束点（工作日 12:00 或 18:00） */
     fun scheduleOffPeak(context: Context) {
         val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         val pendingIntent = buildOffPeakPendingIntent(context)

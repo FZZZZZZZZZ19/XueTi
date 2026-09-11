@@ -265,11 +265,11 @@
     <string name="ai_save_settings">保存接口设置</string>
     <string name="ai_settings_saved">接口设置已保存</string>
     <string name="ai_key_tip2">Key 在 platform.deepseek.com 申请；App 不内置任何 Key</string>
-    <string name="off_peak_title">峰谷时段与优惠提醒</string>
-    <string name="off_peak_reminder">谷时开始提醒（每天 00:30 通知）</string>
-    <string name="off_peak_status">%1$s\n%2$s</string>
-    <string name="notify_offpeak_title">谷时开始，API 更便宜</string>
-    <string name="notify_offpeak_text">现在是 DeepSeek 优惠时段（00:30–08:30，约 5 折），适合批量生成目录与学习内容。</string>
+    <string name="off_peak_title">高峰 / 空闲时段与优惠提醒</string>
+    <string name="off_peak_reminder">空闲时段开始提醒（价格 5 折时通知）</string>
+    <string name="off_peak_status">%1$s\n%2$s\n%3$s</string>
+    <string name="notify_offpeak_title">空闲时段开始，API 价格约 5 折</string>
+    <string name="notify_offpeak_text">已进入 DeepSeek 空闲时段（工作日午休 12:00-14:00、18:00 之后及周末全天），价格约为高峰的一半，适合批量生成目录与学习内容。</string>
 
     <!-- 设置：用量与计费 -->
     <string name="section_usage">API 用量与计费</string>
@@ -278,7 +278,7 @@
     <string name="usage_price_output">输出单价（元/百万 tokens）</string>
     <string name="usage_cost">预估费用</string>
     <string name="usage_cost_value">¥ %1$s</string>
-    <string name="usage_cost_hint">按峰时标准价估算；谷时实际约 5 折。单价可自行修改以匹配官方最新价格。</string>
+    <string name="usage_cost_hint">按高峰标准价估算；空闲时段为一半价格（缓存命中的输入 token 更便宜）。单价可自行修改以匹配官方最新价格。</string>
     <string name="usage_reset">重置用量统计</string>
     <string name="usage_reset_confirm">将清空累计请求数与 token 统计（不影响学习记录），确定吗？</string>
     <string name="usage_reset_done">用量统计已重置</string>
