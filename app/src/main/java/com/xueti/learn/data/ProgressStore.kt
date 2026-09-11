@@ -27,6 +27,48 @@ class ProgressStore(context: Context) {
         get() = prefs.getInt(KEY_DAILY_GOAL, DEFAULT_GOAL)
         set(value) = prefs.edit().putInt(KEY_DAILY_GOAL, value.coerceIn(5, 100)).apply()
 
+    // ---------------- 主目标（目标日 + 手写目标/寄语） ----------------
+
+    /** 目标日期（yyyy-MM-dd，为空表示未设置） */
+    var goalDate: String?
+        get() = prefs.getString(KEY_GOAL_DATE, null)
+        set(value) = prefs.edit().putString(KEY_GOAL_DATE, value).apply()
+
+    /** 用户手写的目标 / 激励语句 */
+    var goalText: String
+        get() = prefs.getString(KEY_GOAL_TEXT, "").orEmpty()
+        set(value) = prefs.edit().putString(KEY_GOAL_TEXT, value.trim()).apply()
+
+    /** 距离指定日期还有多少天（负数表示已过） */
+    fun daysUntil(date: String): Int {
+        val target = parse(date) ?: return 0
+        val today = parse(today()) ?: return 0
+        return ((target.time - today.time) / (24L * 60L * 60L * 1000L)).toInt()
+    }
+
+    /** 日期格式化（如 2026年12月14日） */
+    fun formatGoalDate(date: String): String {
+        val target = parse(date) ?: return date
+        return SimpleDateFormat("yyyy年M月d日", Locale.getDefault()).format(target)
+    }
+
+    /** 距离目标日还有多少天（负数表示已过；未设置目标返回 null） */
+    fun daysUntilGoal(): Int? {
+        val date = goalDate ?: return null
+        return daysUntil(date)
+    }
+
+    /** 目标日的中文格式（如 2026年12月14日） */
+    fun goalDateFormatted(): String? {
+        val date = goalDate ?: return null
+        return formatGoalDate(date)
+    }
+
+    /** 清除主目标 */
+    fun clearGoal() {
+        prefs.edit().remove(KEY_GOAL_DATE).remove(KEY_GOAL_TEXT).apply()
+    }
+
     // ---------------- 日期工具 ----------------
 
     fun today(): String = dateFormat.format(Date())
@@ -234,6 +276,8 @@ class ProgressStore(context: Context) {
         private const val KEY_TODAY_LEARNED = "today_learned"
         private const val KEY_DAILY_WORDS = "daily_words"
         private const val KEY_CUSTOM_GOALS = "custom_goals"
+        private const val KEY_GOAL_DATE = "goal_date"
+        private const val KEY_GOAL_TEXT = "goal_text"
         private const val MAX_HISTORY_DAYS = 400
         const val DEFAULT_GOAL = 20
     }

@@ -11,6 +11,7 @@ import com.xueti.learn.data.WordRepository
 import com.xueti.learn.databinding.ActivityMainBinding
 import com.xueti.learn.update.UpdateChecker
 import com.xueti.learn.update.showUpdateDialog
+import com.xueti.learn.util.GoalEditor
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -54,6 +55,7 @@ class MainActivity : BaseActivity() {
         binding.cardAbout.setOnClickListener {
             toast(getString(R.string.about_slogan))
         }
+        binding.cardGoal.setOnClickListener { editGoal() }
 
         maybeAutoCheckUpdate()
     }
@@ -61,6 +63,38 @@ class MainActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         refreshProgress()
+        // 每次进入首页都刷新底部目标与倒计时
+        renderGoalCard()
+    }
+
+    /** 底部目标卡片：目标语句 + 距离目标日天数 */
+    private fun renderGoalCard() {
+        val goalText = store.goalText
+        val goalDate = store.goalDate
+        if (goalDate.isNullOrBlank()) {
+            binding.goalStatement.text = getString(R.string.goal_empty)
+            binding.goalCountdown.text = ""
+            return
+        }
+        binding.goalStatement.text =
+            if (goalText.isBlank()) getString(R.string.goal_no_text) else goalText
+
+        val days = store.daysUntilGoal() ?: 0
+        val formatted = store.goalDateFormatted() ?: goalDate
+        binding.goalCountdown.text = when {
+            days > 0 -> getString(R.string.goal_countdown, formatted, days)
+            days == 0 -> getString(R.string.goal_is_today)
+            else -> getString(R.string.goal_passed, formatted, -days)
+        }
+    }
+
+    private fun editGoal() {
+        GoalEditor.show(
+            activity = this,
+            store = store,
+            initialDate = store.goalDate ?: store.today(),
+            allowDateChange = true
+        ) { renderGoalCard() }
     }
 
     private fun refreshProgress() {

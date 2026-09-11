@@ -13,6 +13,7 @@ import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.databinding.ActivityStatsBinding
 import com.xueti.learn.model.Familiarity
+import com.xueti.learn.util.GoalEditor
 import java.util.Calendar
 
 /**
@@ -194,6 +195,7 @@ class StatsActivity : BaseActivity() {
             setPadding(dp(1), dp(3), dp(1), dp(3))
             when {
                 date == today -> setBackgroundResource(R.drawable.bg_day_today)
+                date == store.goalDate -> setBackgroundResource(R.drawable.bg_day_goal)
                 goalMet -> setBackgroundResource(R.drawable.bg_day_done)
             }
             isClickable = true
@@ -232,11 +234,12 @@ class StatsActivity : BaseActivity() {
         columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f)
     }
 
-    /** 点击日期：查看当天学习内容 + 自定义该日目标 */
+    /** 点击日期：查看当天学习内容、写目标寄语、自定义该日学习量 */
     private fun showDayDialog(date: String) {
         val words = store.wordsLearnedOn(date)
         val currentGoal = store.dailyGoalFor(date)
         val isCustom = store.customGoalFor(date) != null
+        val isGoalDate = date == store.goalDate
 
         val message = buildString {
             append(getString(R.string.stats_day_learned, words.size))
@@ -248,11 +251,18 @@ class StatsActivity : BaseActivity() {
             append("\n\n")
             append(getString(R.string.stats_day_goal, currentGoal))
             if (isCustom) append(getString(R.string.stats_day_custom_suffix))
+            if (isGoalDate && store.goalText.isNotBlank()) {
+                append("\n\n★ ")
+                append(getString(R.string.goal_card_title))
+                append("：")
+                append(store.goalText)
+            }
             append("\n")
             append(getString(R.string.stats_day_pick_goal))
         }
 
         val options = mutableListOf(
+            getString(R.string.goal_set_for_day),
             getString(R.string.goal_follow_default),
             getString(R.string.goal_rest_day)
         )
@@ -263,9 +273,19 @@ class StatsActivity : BaseActivity() {
             .setMessage(message)
             .setItems(options.toTypedArray()) { _, which ->
                 when (which) {
-                    0 -> store.setCustomGoal(date, null)
-                    1 -> store.setCustomGoal(date, 0)
-                    else -> store.setCustomGoal(date, GOAL_OPTIONS[which - 2])
+                    0 -> {
+                        // 写目标/寄语，并把该日期设为目标日
+                        GoalEditor.show(
+                            activity = this,
+                            store = store,
+                            initialDate = date,
+                            allowDateChange = false
+                        ) { renderAll() }
+                        return@setItems
+                    }
+                    1 -> store.setCustomGoal(date, null)
+                    2 -> store.setCustomGoal(date, 0)
+                    else -> store.setCustomGoal(date, GOAL_OPTIONS[which - 3])
                 }
                 Toast.makeText(this, R.string.stats_goal_saved, Toast.LENGTH_SHORT).show()
                 renderAll()

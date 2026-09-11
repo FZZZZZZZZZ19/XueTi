@@ -171,4 +171,26 @@
     <string name="stats_today_goal">今日目标 %1$d 词 · 已学 %2$d 词</string>
     <string name="rest_day_title">今天是休息日</string>
     <string name="rest_day_detail">你在日历中把今天设为了休息日，去统计页可以改回目标</string>
+
+    <!-- 主目标（目标日 + 手写寄语，首页底部显示） -->
+    <string name="goal_card_title">我的目标</string>
+    <string name="goal_empty">点击设置目标日期，并写下你的目标或激励语句</string>
+    <string name="goal_no_text">（未填写目标语句）</string>
+    <string name="goal_countdown">距离 %1$s 还有 %2$d 天</string>
+    <string name="goal_is_today">今天就是目标日，加油！</string>
+    <string name="goal_passed">目标日（%1$s）已过 %2$d 天</string>
+    <string name="goal_edit_title">设置我的目标</string>
+    <string name="goal_date_label">目标日期</string>
+    <string name="goal_date_hint">点击可修改目标日期</string>
+    <string name="goal_date_with_days">%1$s（还有 %2$d 天）</string>
+    <string name="goal_date_today">%1$s（就是今天）</string>
+    <string name="goal_date_passed">%1$s（已过 %2$d 天）</string>
+    <string name="goal_text_hint">写下你的目标或激励语句（如：一次过六级！）</string>
+    <string name="goal_text_required">请先写下你的目标或激励语句</string>
+    <string name="goal_save">保存</string>
+    <string name="goal_saved">目标已保存</string>
+    <string name="goal_cleared">已清除目标</string>
+    <string name="goal_clear">清除目标</string>
+    <string name="goal_set_for_day">写目标/寄语（把该日设为目标日）</string>
+    <string name="goal_mark">目标日</string>
 </resources>
