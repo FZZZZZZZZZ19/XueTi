@@ -122,11 +122,13 @@ class ProgressStore(context: Context) {
     fun record(word: String, familiarity: Familiarity, countToday: Boolean = true) {
         val records = loadRecords().toMutableMap()
         val existing = records[word]
+        val now = System.currentTimeMillis()
         records[word] = LearnRecord(
             word = word,
             familiarity = familiarity,
-            firstLearnedAt = existing?.firstLearnedAt ?: System.currentTimeMillis(),
-            reviewCount = (existing?.reviewCount ?: 0) + 1
+            firstLearnedAt = existing?.firstLearnedAt ?: now,
+            reviewCount = (existing?.reviewCount ?: 0) + 1,
+            lastSeenAt = now
         )
         saveRecords(records)
         addToDailyWords(today(), word)
@@ -209,13 +211,50 @@ class ProgressStore(context: Context) {
 
     fun recordOf(word: String): LearnRecord? = loadRecords()[word]
 
-    // ---------------- 复习（需复习的词，连续答对 2 次才算掌握） ----------------
+    // ---------------- 复习（需复习的词 + 遗忘判定） ----------------
 
-    /** 所有需复习的词（按最早学习时间排序） */
+    /** 所有需复习的词（不认识，按最早学习时间排序） */
     fun reviewWords(): List<LearnRecord> =
         loadRecords().values
             .filter { it.familiarity == Familiarity.UNKNOWN }
             .sortedBy { it.firstLearnedAt }
+
+    /** 距最近一次练习过去了几天 */
+    fun daysSinceSeen(record: LearnRecord): Int {
+        val days = (System.currentTimeMillis() - record.lastSeen) / (24L * 60L * 60L * 1000L)
+        return days.coerceAtLeast(0).toInt()
+    }
+
+    /** 是否已「很久没练」（认识但超过 [intervalDays] 天没碰，可能遗忘） */
+    fun isOverdue(record: LearnRecord, intervalDays: Int = REVIEW_INTERVAL_DAYS): Boolean =
+        record.familiarity == Familiarity.KNOWN && daysSinceSeen(record) >= intervalDays
+
+    /**
+     * 待复习队列 = 需复习的词（不认识，越早学的越靠前）
+     * + 很久没练可能遗忘的词（认识但超过 [intervalDays] 天未练，越久没碰越靠前）
+     */
+    fun dueReviewWords(intervalDays: Int = REVIEW_INTERVAL_DAYS): List<LearnRecord> {
+        val records = loadRecords().values
+        val unknown = records.filter { it.familiarity == Familiarity.UNKNOWN }
+            .sortedBy { it.lastSeen }
+        val overdue = records.filter { isOverdue(it, intervalDays) }
+            .sortedBy { it.lastSeen }
+        return unknown + overdue
+    }
+
+    /** 待复习词数量 */
+    fun dueReviewCount(intervalDays: Int = REVIEW_INTERVAL_DAYS): Int =
+        dueReviewWords(intervalDays).size
+
+    /** 待复习词里「很久没练」的数量 */
+    fun overdueKnownCount(intervalDays: Int = REVIEW_INTERVAL_DAYS): Int =
+        loadRecords().values.count { isOverdue(it, intervalDays) }
+
+    /** 更新某词最近练习时间（答对/答错都算练过） */
+    private fun touch(records: MutableMap<String, LearnRecord>, word: String) {
+        val existing = records[word] ?: return
+        records[word] = existing.copy(lastSeenAt = System.currentTimeMillis())
+    }
 
     /** 复习时答对：连续答对达到 [REVIEW_REQUIRED] 次即标记为掌握 */
     fun addReviewCorrect(word: String): Int {
@@ -223,19 +262,44 @@ class ProgressStore(context: Context) {
         val existing = records[word] ?: return 0
         val streak = existing.reviewCorrect + 1
         records[word] = if (streak >= REVIEW_REQUIRED) {
-            existing.copy(familiarity = Familiarity.KNOWN, reviewCorrect = REVIEW_REQUIRED)
+            existing.copy(
+                familiarity = Familiarity.KNOWN,
+                reviewCorrect = REVIEW_REQUIRED,
+                lastSeenAt = System.currentTimeMillis()
+            )
         } else {
-            existing.copy(reviewCorrect = streak)
+            existing.copy(reviewCorrect = streak, lastSeenAt = System.currentTimeMillis())
         }
         saveRecords(records)
         return streak
     }
 
-    /** 复习时答错：连续答对次数清零，保持「需复习」 */
+    /**
+     * 复习时答对（统一入口）：返回该词是否已「通关」，可以从复习队列移除。
+     * - 不认识的词：需连续答对 [REVIEW_REQUIRED] 次
+     * - 认识但很久没练的词：答对一次即刷新计时，重新变得「新鲜」
+     */
+    fun answerReviewCorrect(word: String): Boolean {
+        val existing = loadRecords()[word] ?: return true
+        return if (existing.familiarity == Familiarity.UNKNOWN) {
+            addReviewCorrect(word) >= REVIEW_REQUIRED
+        } else {
+            val records = loadRecords().toMutableMap()
+            touch(records, word)
+            saveRecords(records)
+            true
+        }
+    }
+
+    /** 复习时答错：连续答对次数清零，标记为需复习 */
     fun resetReviewCorrect(word: String) {
         val records = loadRecords().toMutableMap()
         val existing = records[word] ?: return
-        records[word] = existing.copy(familiarity = Familiarity.UNKNOWN, reviewCorrect = 0)
+        records[word] = existing.copy(
+            familiarity = Familiarity.UNKNOWN,
+            reviewCorrect = 0,
+            lastSeenAt = System.currentTimeMillis()
+        )
         saveRecords(records)
     }
 
@@ -280,7 +344,8 @@ class ProgressStore(context: Context) {
                     }.getOrDefault(Familiarity.KNOWN),
                     firstLearnedAt = o.optLong("firstLearnedAt", System.currentTimeMillis()),
                     reviewCount = o.optInt("reviewCount", 1),
-                    reviewCorrect = o.optInt("reviewCorrect", 0)
+                    reviewCorrect = o.optInt("reviewCorrect", 0),
+                    lastSeenAt = o.optLong("lastSeenAt", 0L)
                 )
             }
             map
@@ -297,6 +362,7 @@ class ProgressStore(context: Context) {
                     put("firstLearnedAt", record.firstLearnedAt)
                     put("reviewCount", record.reviewCount)
                     put("reviewCorrect", record.reviewCorrect)
+                    put("lastSeenAt", record.lastSeen)
                 }
             )
         }
@@ -319,5 +385,8 @@ class ProgressStore(context: Context) {
 
         /** 复习时连续答对多少次算掌握 */
         const val REVIEW_REQUIRED = 2
+
+        /** 多少天没练就认为「可能遗忘」，重新放回复习队列 */
+        const val REVIEW_INTERVAL_DAYS = 14
     }
 }

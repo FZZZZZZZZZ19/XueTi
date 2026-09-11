@@ -315,6 +315,10 @@
     <string name="review_title_count">复习需复习的 %1$d 个词</string>
     <string name="review_none">暂时没有需要复习的词，先去学新词吧～</string>
     <string name="review_rule_hint">连续答对 2 次才算掌握，答对后自动摘掉「需复习」标记</string>
+    <string name="review_breakdown">不认识 %1$d 个 · 超过 %2$d 天没练 %3$d 个</string>
+    <string name="review_rule_unknown">这个词你标记过「不认识」：连续答对 2 次才算掌握</string>
+    <string name="review_rule_overdue">超过 %1$d 天没练，可能忘了：答对一次即可重新计时</string>
+    <string name="review_again">再复习一轮</string>
     <string name="review_start">开始复习</string>
     <string name="review_progress">已掌握 %1$d / %2$d · 剩余 %3$d 个</string>
     <string name="review_unknown">想不起来</string>
@@ -345,4 +349,32 @@
     <string name="dict_status_new">未学</string>
     <string name="dict_status_review">需复习</string>
     <string name="dict_status_known">已掌握</string>
+
+    <!-- v1.81：复习词回流每日序列 + 遗忘判定 + 每日待办 -->
+    <string name="session_plan_both">本轮：复习 %1$d 词 + 新词 %2$d 词</string>
+    <string name="session_plan_review">本轮：复习 %1$d 词</string>
+    <string name="session_plan_review_only">本轮：复习 %1$d 词（今日目标已完成，继续巩固）</string>
+    <string name="session_plan_new">本轮：新词 %1$d 词</string>
+    <string name="done_detail_due">今日已学 %1$d 词 · 累计 %2$d 词 · 还有 %3$d 词需复习</string>
+
+    <string name="todo_title">今日待办</string>
+    <string name="todo_summary">已完成 %1$d / %2$d</string>
+    <string name="todo_auto_study">学习新词</string>
+    <string name="todo_auto_review">复习巩固</string>
+    <string name="todo_study_state">今日已学 %1$d / %2$d 词</string>
+    <string name="todo_review_state">还有 %1$d 个词需复习</string>
+    <string name="todo_review_state_done">已清空，暂无需要复习的词</string>
+    <string name="todo_go_study">去学习</string>
+    <string name="todo_study_again">再学一轮</string>
+    <string name="todo_go_review">去复习</string>
+    <string name="todo_review_again">再复习一轮</string>
+    <string name="todo_add">+ 添加待办</string>
+    <string name="todo_add_title">新建待办</string>
+    <string name="todo_add_hint">例如：做一套六级真题</string>
+    <string name="todo_add_required">请填写待办内容</string>
+    <string name="todo_empty">还没有自定义待办，点下面「+ 添加待办」写一条吧（勾选完成，长按删除）</string>
+    <string name="todo_delete_title">删除待办</string>
+    <string name="todo_delete_confirm">确定删除「%1$s」吗？</string>
+    <string name="todo_clear_done">清除已完成（%1$d）</string>
+    <string name="todo_cleared">已清除 %1$d 条已完成待办</string>
 </resources>

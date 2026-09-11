@@ -26,5 +26,10 @@ data class LearnRecord(
     val firstLearnedAt: Long,
     val reviewCount: Int = 1,
     /** 复习时连续答对的次数（达到 2 次即视为掌握） */
-    val reviewCorrect: Int = 0
-)
+    val reviewCorrect: Int = 0,
+    /** 最近一次练习/复习时间（0 表示老数据，按 firstLearnedAt 处理） */
+    val lastSeenAt: Long = 0L
+) {
+    /** 最近一次见到该词的时间 */
+    val lastSeen: Long get() = if (lastSeenAt > 0L) lastSeenAt else firstLearnedAt
+}

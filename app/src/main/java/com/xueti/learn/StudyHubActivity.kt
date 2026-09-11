@@ -18,11 +18,15 @@ import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
+import com.xueti.learn.data.ToDoStore
+import com.xueti.learn.data.TodoItem
 import com.xueti.learn.data.UsageStore
 import com.xueti.learn.data.WordRepository
 import com.xueti.learn.databinding.ActivityStudyHubBinding
 import com.xueti.learn.databinding.DialogReviewBinding
+import com.xueti.learn.databinding.DialogTodoAddBinding
 import com.xueti.learn.databinding.DialogWordDetailBinding
+import com.xueti.learn.databinding.ItemTodoBinding
 import com.xueti.learn.model.Familiarity
 import com.xueti.learn.model.Word
 import com.xueti.learn.util.AiResultDialog
@@ -43,6 +47,7 @@ class StudyHubActivity : BaseActivity() {
     private val store: ProgressStore get() = (application as App).progressStore
     private val settings by lazy { SettingsStore(this) }
     private val usageStore by lazy { UsageStore(this) }
+    private val toDoStore by lazy { ToDoStore(this) }
 
     private val adapter = WordListAdapter()
     private val dictAdapter = DictionaryAdapter { word -> showWordDetail(word) }
@@ -87,6 +92,16 @@ class StudyHubActivity : BaseActivity() {
             startActivity(Intent(this, StudyActivity::class.java))
         }
         binding.btnStartReview.setOnClickListener { startReview() }
+        binding.todoStudyRow.setOnClickListener {
+            startActivity(Intent(this, StudyActivity::class.java))
+        }
+        binding.todoStudyAction.setOnClickListener {
+            startActivity(Intent(this, StudyActivity::class.java))
+        }
+        binding.todoReviewRow.setOnClickListener { startReview() }
+        binding.todoReviewAction.setOnClickListener { startReview() }
+        binding.btnAddTodo.setOnClickListener { showAddTodoDialog() }
+        binding.todoClearDone.setOnClickListener { clearDoneTodos() }
         binding.btnAiTranslate.setOnClickListener {
             runAi(
                 title = getString(R.string.ai_translate_title, shortInput()),
@@ -154,16 +169,27 @@ class StudyHubActivity : BaseActivity() {
         binding.statTotal.text = store.learnedCount().toString()
         binding.statRate.text = getString(R.string.percent_value, store.knownRate())
 
-        // 需复习的词
-        val reviewCount = store.reviewWords().size
+        // 需复习的词（不认识 + 很久没练可能遗忘的）
+        val due = store.dueReviewWords()
+        val unknownDue = due.count { it.familiarity == Familiarity.UNKNOWN }
+        val overdueDue = due.size - unknownDue
         binding.reviewCountText.text =
-            if (reviewCount == 0) {
+            if (due.isEmpty()) {
                 getString(R.string.review_none)
             } else {
-                getString(R.string.review_title_count, reviewCount)
+                getString(R.string.review_title_count, due.size)
             }
-        binding.btnStartReview.isEnabled = reviewCount > 0
-        binding.btnStartReview.alpha = if (reviewCount > 0) 1f else 0.5f
+        binding.reviewBreakdown.text = getString(
+            R.string.review_breakdown,
+            unknownDue,
+            ProgressStore.REVIEW_INTERVAL_DAYS,
+            overdueDue
+        )
+        binding.btnStartReview.isEnabled = due.isNotEmpty()
+        binding.btnStartReview.alpha = if (due.isNotEmpty()) 1f else 0.5f
+
+        // 今日待办
+        renderTodo()
 
         // 我的词库
         val records = store.learnedRecords()
@@ -181,9 +207,9 @@ class StudyHubActivity : BaseActivity() {
 
     // ==================== 独立复习 ====================
 
-    /** 进入复习：队列 = 所有「需复习」的词（不认识 / 尚未连续答对 2 次） */
+    /** 进入复习：队列 = 所有待复习词（不认识的 + 很久没练可能遗忘的） */
     private fun startReview() {
-        val records = store.reviewWords()
+        val records = store.dueReviewWords()
         if (records.isEmpty()) {
             toast(getString(R.string.review_none))
             return
@@ -257,6 +283,11 @@ class StudyHubActivity : BaseActivity() {
         view.reviewSessionProgress.progress = reviewMastered
         view.reviewWord.text = word.word
         view.reviewPhonetic.text = word.phonetic
+        view.reviewHint.text = if (store.recordOf(word.word)?.familiarity == Familiarity.KNOWN) {
+            getString(R.string.review_rule_overdue, ProgressStore.REVIEW_INTERVAL_DAYS)
+        } else {
+            getString(R.string.review_rule_unknown)
+        }
         view.reviewMeaning.text = "${word.pos} ${word.meaning}".trim()
         view.reviewExample.text = word.example
         view.reviewExampleCn.text = word.exampleCn
@@ -271,12 +302,12 @@ class StudyHubActivity : BaseActivity() {
         view.btnReviewKnown.setText(R.string.review_known)
     }
 
-    /** 认识：累计连续答对次数，达到 2 次即掌握并摘掉「需复习」标记 */
+    /** 认识：不认识的词要连续答对 2 次；很久没练的词答对一次即刷新计时 */
     private fun markReviewCorrect() {
         val view = reviewBinding ?: return
         val word = reviewQueue.removeFirstOrNull() ?: return
-        val streak = store.addReviewCorrect(word.word)
-        if (streak >= ProgressStore.REVIEW_REQUIRED) {
+        val mastered = store.answerReviewCorrect(word.word)
+        if (mastered) {
             reviewMastered++
         } else {
             // 还差一次，本轮稍后再过一遍
@@ -316,6 +347,102 @@ class StudyHubActivity : BaseActivity() {
         val mastered = reviewMastered
         reviewDialog?.dismiss()
         toast(getString(R.string.review_finished, total, mastered))
+    }
+
+    // ==================== 今日待办 ====================
+
+    /** 待办卡片：2 项自动任务（学习新词 / 复习巩固）+ 自定义待办 */
+    private fun renderTodo() {
+        val goal = store.dailyGoalFor(store.today())
+        val todayLearned = store.todayLearnedCount()
+        val studyDone = goal > 0 && todayLearned >= goal
+        binding.todoStudyIcon.text = if (studyDone) ICON_DONE else ICON_TODO
+        binding.todoStudyState.text = if (goal <= 0) {
+            getString(R.string.rest_day_title)
+        } else {
+            getString(R.string.todo_study_state, todayLearned, goal)
+        }
+        binding.todoStudyAction.setText(
+            if (studyDone) R.string.todo_study_again else R.string.todo_go_study
+        )
+
+        val due = store.dueReviewCount()
+        val reviewDone = due == 0
+        binding.todoReviewIcon.text = if (reviewDone) ICON_DONE else ICON_TODO
+        binding.todoReviewState.text = if (reviewDone) {
+            getString(R.string.todo_review_state_done)
+        } else {
+            getString(R.string.todo_review_state, due)
+        }
+        binding.todoReviewAction.setText(
+            if (reviewDone) R.string.todo_review_again else R.string.todo_go_review
+        )
+
+        val items = toDoStore.items()
+        binding.todoListContainer.removeAllViews()
+        items.forEach { item -> binding.todoListContainer.addView(buildTodoRow(item)) }
+        binding.todoEmpty.isVisible = items.isEmpty()
+
+        val doneCustom = items.count { it.done }
+        binding.todoClearDone.isVisible = doneCustom > 0
+        binding.todoClearDone.text = getString(R.string.todo_clear_done, doneCustom)
+
+        val doneTotal = (if (studyDone) 1 else 0) + (if (reviewDone) 1 else 0) + doneCustom
+        binding.todoSummary.text = getString(R.string.todo_summary, doneTotal, 2 + items.size)
+    }
+
+    private fun buildTodoRow(item: TodoItem): View {
+        val row = ItemTodoBinding.inflate(layoutInflater, binding.todoListContainer, false)
+        row.todoCheck.isChecked = item.done
+        row.todoText.text = item.text
+        row.todoText.paint.isStrikeThruText = item.done
+        row.root.alpha = if (item.done) 0.6f else 1f
+        row.root.setOnClickListener {
+            toDoStore.setDone(item.id, !item.done)
+            renderTodo()
+        }
+        row.root.setOnLongClickListener {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.todo_delete_title)
+                .setMessage(getString(R.string.todo_delete_confirm, item.text))
+                .setNegativeButton(R.string.cancel, null)
+                .setPositiveButton(R.string.delete) { _, _ ->
+                    toDoStore.remove(item.id)
+                    renderTodo()
+                }
+                .show()
+            true
+        }
+        return row.root
+    }
+
+    private fun showAddTodoDialog() {
+        val view = DialogTodoAddBinding.inflate(layoutInflater)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.todo_add_title)
+            .setView(view.root)
+            .setPositiveButton(R.string.confirm, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val text = view.etTodoText.text?.toString().orEmpty().trim()
+                if (text.isEmpty()) {
+                    view.todoInputLayout.error = getString(R.string.todo_add_required)
+                    return@setOnClickListener
+                }
+                toDoStore.add(text)
+                renderTodo()
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
+    }
+
+    private fun clearDoneTodos() {
+        val removed = toDoStore.clearDone()
+        if (removed > 0) toast(getString(R.string.todo_cleared, removed))
+        renderTodo()
     }
 
     // ==================== 词典（全览 + 搜索） ====================
@@ -472,5 +599,10 @@ class StudyHubActivity : BaseActivity() {
 
     private fun toast(text: String) {
         Toast.makeText(this, text, Toast.LENGTH_SHORT).show()
+    }
+
+    private companion object {
+        const val ICON_DONE = "✓"
+        const val ICON_TODO = "○"
     }
 }

@@ -73,7 +73,7 @@ class MainActivity : BaseActivity() {
             today >= goal -> getString(R.string.hub_summary_done, today)
             else -> getString(R.string.hub_summary, today, goal)
         }
-        val reviewCount = store.reviewWords().size
+        val reviewCount = store.dueReviewCount()
         binding.hubSummary.text = if (reviewCount > 0) {
             getString(R.string.hub_summary_review, base, reviewCount)
         } else {
