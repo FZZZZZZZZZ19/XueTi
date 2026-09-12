@@ -436,4 +436,31 @@
     <string name="mistake_entry_line">错题本 · 未掌握 %1$d 题（自动收集，生成内容时重点推送）</string>
     <string name="review_mark_mistake">这词我记错了 · 存入错题本</string>
     <string name="review_mistake_saved">已把「%1$s」记入错题本</string>
+
+    <!-- v1.91：统计页三大模块 + MPAndroidChart 图表 -->
+    <string name="stats_section_cet">六级学习</string>
+    <string name="stats_section_textbook">全书学习</string>
+    <string name="stats_section_mistake">错题学习</string>
+    <string name="stats_cet_daily_title">近 14 天每日学习（词）</string>
+    <string name="stats_cet_known_title">掌握情况</string>
+    <string name="stats_cet_review_title">复习队列</string>
+    <string name="stats_cet_summary">认识率 %1$d%% · 连续打卡 %2$d 天 · 待复习 %3$d 词</string>
+    <string name="stats_cet_coverage">词库覆盖：已学 %1$d / %2$d 词（%3$d%%）</string>
+    <string name="stats_cet_plan">今日目标：%1$d 词</string>
+    <string name="stats_bar_overdue">超期未练</string>
+    <string name="stats_chart_no_data">暂无数据</string>
+    <string name="stats_book_total_title">全书进度</string>
+    <string name="stats_book_progress_title">每本书进度</string>
+    <string name="stats_book_studied">已学小节</string>
+    <string name="stats_book_remaining">未学小节</string>
+    <string name="stats_book_summary">共 %1$d 本书 · 小节 %2$d 个 · 已学 %3$d 个（%4$d%%）</string>
+    <string name="stats_book_list_line">《%1$s》 %2$d/%3$d 节 · %4$d%%</string>
+    <string name="stats_book_pdf_tag"> · 有教材 PDF</string>
+    <string name="stats_book_empty">还没有书本，去「全书学习」新建一本</string>
+    <string name="stats_mistake_daily_title">近 14 天新增错题（题）</string>
+    <string name="stats_mistake_pie_title">错题掌握情况</string>
+    <string name="stats_mistake_subject_title">学科分布</string>
+    <string name="stats_mistake_summary">共 %1$d 题 · 未掌握 %2$d · 已掌握 %3$d · 平均复习 %4$.1f 次</string>
+    <string name="stats_mistake_hint">提示：在「AI 解题」点「这题我算错了」或在复习时标记，就会自动记入错题本</string>
+    <string name="stats_mistake_empty">还没有错题记录</string>
 </resources>
