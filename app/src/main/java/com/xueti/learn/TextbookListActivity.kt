@@ -40,6 +40,9 @@ class TextbookListActivity : BaseActivity() {
         binding.fabAddBook.setOnClickListener {
             startActivity(Intent(this, TextbookCreateActivity::class.java))
         }
+        binding.btnCurated.setOnClickListener {
+            startActivity(Intent(this, CuratedActivity::class.java))
+        }
     }
 
     override fun onResume() {

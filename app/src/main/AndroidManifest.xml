@@ -41,6 +41,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".CuratedActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".TextbookListActivity"
             android:exported="false" />
 

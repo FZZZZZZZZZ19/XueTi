@@ -66,13 +66,42 @@ data class Chapter(
     }
 }
 
+/** 一道例题（从模块三拆出来的单题，可单独加入「精选题库」） */
+data class ExampleItem(
+    val id: String,
+    val title: String,
+    val question: String,
+    val solution: String
+) {
+    /** 用于去重与展示的纯文本（去掉 Markdown 记号） */
+    val plainText: String get() = "$question\n$solution"
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("id", id)
+        put("title", title)
+        put("question", question)
+        put("solution", solution)
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject): ExampleItem = ExampleItem(
+            id = o.optString("id"),
+            title = o.optString("title"),
+            question = o.optString("question"),
+            solution = o.optString("solution")
+        )
+    }
+}
+
 /** 一个小章 AI 生成的三模块内容 */
 data class SectionContent(
     val knowledge: String,
     val formulas: String,
     val examples: String,
     val styleKey: String,
-    val generatedAt: Long
+    val generatedAt: Long,
+    /** 例题拆分成单题（v1.92）：每道题可单独加入精选题库 */
+    val exampleItems: List<ExampleItem> = emptyList()
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("knowledge", knowledge)
@@ -80,16 +109,25 @@ data class SectionContent(
         put("examples", examples)
         put("styleKey", styleKey)
         put("generatedAt", generatedAt)
+        val arr = JSONArray()
+        exampleItems.forEach { arr.put(it.toJson()) }
+        put("exampleItems", arr)
     }
 
     companion object {
-        fun fromJson(o: JSONObject): SectionContent = SectionContent(
-            knowledge = o.optString("knowledge"),
-            formulas = o.optString("formulas"),
-            examples = o.optString("examples"),
-            styleKey = o.optString("styleKey", StudyStyle.PLAIN.key),
-            generatedAt = o.optLong("generatedAt", System.currentTimeMillis())
-        )
+        fun fromJson(o: JSONObject): SectionContent {
+            val arr = o.optJSONArray("exampleItems") ?: JSONArray()
+            return SectionContent(
+                knowledge = o.optString("knowledge"),
+                formulas = o.optString("formulas"),
+                examples = o.optString("examples"),
+                styleKey = o.optString("styleKey", StudyStyle.PLAIN.key),
+                generatedAt = o.optLong("generatedAt", System.currentTimeMillis()),
+                exampleItems = (0 until arr.length()).mapNotNull { index ->
+                    arr.optJSONObject(index)?.let { ExampleItem.fromJson(it) }
+                }
+            )
+        }
     }
 }
 

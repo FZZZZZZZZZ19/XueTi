@@ -1,9 +1,11 @@
 package com.xueti.learn.ai
 
 import com.xueti.learn.model.Chapter
+import com.xueti.learn.model.ExampleItem
 import com.xueti.learn.model.Section
 import com.xueti.learn.model.SectionContent
 import com.xueti.learn.model.StudyStyle
+import com.xueti.learn.util.ExampleParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -348,20 +350,60 @@ object DeepSeekClient {
             append("- knowledge：本节知识点（概念、定义、原理、公式的适用条件、易错点、记忆要点）\n")
             append("- formulas：本节涉及的公式；**必须用 LaTeX 书写**（行内 $...$，独立公式 \$\$...\$\$），" +
                 "例如 \$\$S = v_0 t + \\frac{1}{2} a t^2\$\$，并逐条说明每个符号的含义与单位；不要用纯文本凑公式\n")
-            append("- examples：2~3 道典型例题，每题给出「题目」与「分步解答」（公式同样用 LaTeX）\n\n")
+            append("- examples：2~3 道典型例题，**每题单独一个对象**（公式同样用 LaTeX）：\n")
+            append("  · title：题目标题，如「例题 1 求极限」；\n")
+            append("  · question：题干（只写题目，不要写解答）；\n")
+            append("  · solution：分步解答。\n\n")
             append("只输出 JSON，不要任何解释文字。\n")
-            append("JSON 格式：{\"knowledge\":\"...\",\"formulas\":\"...\",\"examples\":\"...\"}")
+            append(
+                "JSON 格式：{\"knowledge\":\"...\",\"formulas\":\"...\"," +
+                    "\"examples\":[{\"title\":\"例题 1 ...\",\"question\":\"...\",\"solution\":\"...\"}]}"
+            )
         }
 
         val result = chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
         val root = JSONObject(extractJson(result.text))
+        val rawExamples = root.opt("examples")
+        val exampleItems: List<ExampleItem>
+        val examplesText: String
+        when (rawExamples) {
+            // 新格式：结构化的多道例题
+            is JSONArray -> {
+                exampleItems = (0 until rawExamples.length()).mapNotNull { index ->
+                    val o = rawExamples.optJSONObject(index) ?: return@mapNotNull null
+                    val question = o.optString("question").trim()
+                    val solution = o.optString("solution").trim()
+                    val title = o.optString("title").trim().ifEmpty { "例题 ${index + 1}" }
+                    if (question.isEmpty() && solution.isEmpty()) {
+                        null
+                    } else {
+                        ExampleItem(
+                            id = "ex_${System.currentTimeMillis()}_$index",
+                            title = title,
+                            question = question.ifEmpty { "（题干见解答）" },
+                            solution = solution
+                        )
+                    }
+                }
+                examplesText = exampleItems.joinToString("\n\n") { item ->
+                    "### ${item.title}\n\n${item.question}\n\n${item.solution}".trim()
+                }
+            }
+            // 兼容：模型仍返回整段文本
+            else -> {
+                examplesText = root.optString("examples").trim().ifEmpty { "（未生成例题）" }
+                exampleItems = ExampleParser.split(examplesText)
+            }
+        }
+
         SectionResult(
             content = SectionContent(
                 knowledge = root.optString("knowledge").trim().ifEmpty { "（未生成知识点）" },
                 formulas = root.optString("formulas").trim().ifEmpty { "（未生成公式）" },
-                examples = root.optString("examples").trim().ifEmpty { "（未生成例题）" },
+                examples = examplesText.ifEmpty { "（未生成例题）" },
                 styleKey = style.key,
-                generatedAt = System.currentTimeMillis()
+                generatedAt = System.currentTimeMillis(),
+                exampleItems = exampleItems
             ),
             usage = result.usage
         )

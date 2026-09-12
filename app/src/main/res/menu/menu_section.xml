@@ -3,6 +3,11 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_curated"
+        android:title="@string/curated_title"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_copy_section"
         android:title="@string/section_copy_all"
         app:showAsAction="never" />

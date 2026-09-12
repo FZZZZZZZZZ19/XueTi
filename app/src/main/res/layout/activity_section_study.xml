@@ -235,20 +235,29 @@
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:layout_weight="1"
                             android:text="@string/module_example"
                             android:textSize="15sp"
                             android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/exampleHint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/example_add_hint"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:textSize="11sp" />
                     </LinearLayout>
 
-                    <WebView
-                        android:id="@+id/webExamples"
+                    <!-- 每道例题一张卡片，右上角「+」加入精选题库 -->
+                    <LinearLayout
+                        android:id="@+id/exampleListContainer"
                         android:layout_width="match_parent"
-                        android:layout_height="120dp"
-                        android:layout_marginTop="8dp"
-                        android:background="@android:color/transparent" />
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

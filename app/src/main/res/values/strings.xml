@@ -463,4 +463,28 @@
     <string name="stats_mistake_summary">共 %1$d 题 · 未掌握 %2$d · 已掌握 %3$d · 平均复习 %4$.1f 次</string>
     <string name="stats_mistake_hint">提示：在「AI 解题」点「这题我算错了」或在复习时标记，就会自动记入错题本</string>
     <string name="stats_mistake_empty">还没有错题记录</string>
+
+    <!-- v1.92：全书学习 · 精选题库（例题拆分 + 逐题收藏） -->
+    <string name="curated_title">精选题库</string>
+    <string name="curated_search_hint">搜索题目 / 章节 / 书名</string>
+    <string name="curated_pending_only">只看未掌握</string>
+    <string name="curated_empty">精选题库还是空的\n在「全书学习」里点开一个小节 → 例题区每道题右上角点「+ 加入精选」，就会按书目和章节收集到这里</string>
+    <string name="curated_count">共 %1$d 题 · 未掌握 %2$d 题</string>
+    <string name="curated_clear_mastered">清除已掌握（%1$d）</string>
+    <string name="curated_cleared">已清除 %1$d 道已掌握的题</string>
+    <string name="curated_book_header">《%1$s》· %2$d 题</string>
+    <string name="curated_pending">未掌握</string>
+    <string name="curated_default_title">精选题目</string>
+    <string name="curated_remove">移出精选题库</string>
+    <string name="curated_remove_confirm">确定把「%1$s」移出精选题库吗？</string>
+    <string name="curated_removed">已移出精选题库</string>
+    <string name="curated_no_solution">（这道题没有保存解答）</string>
+    <string name="example_add">+ 加入精选</string>
+    <string name="example_added">已加入 ✓</string>
+    <string name="example_add_hint">喜欢的题点「+」收藏</string>
+    <string name="example_added_hint">已收藏 %1$d / %2$d 道</string>
+    <string name="example_added_ok">已把「%1$s」加入精选题库</string>
+    <string name="example_already_added">这道题已经在精选题库里了</string>
+    <string name="example_index">例题 %1$d</string>
+    <string name="example_empty">本节没有生成例题</string>
 </resources>
