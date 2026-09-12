@@ -11,8 +11,8 @@ android {
         applicationId = "com.xueti.learn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 15
-        versionName = "1.81"
+        versionCode = 16
+        versionName = "1.90"
     }
 
     buildTypes {
@@ -44,4 +44,6 @@ dependencies {
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    // 教材 PDF 文本抽取（全书学习：基于上传的 PDF 生成内容，减少幻觉）
+    implementation("com.tom-roush:pdfbox-android:2.0.27.0")
 }

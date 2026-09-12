@@ -377,4 +377,63 @@
     <string name="todo_delete_confirm">确定删除「%1$s」吗？</string>
     <string name="todo_clear_done">清除已完成（%1$d）</string>
     <string name="todo_cleared">已清除 %1$d 条已完成待办</string>
+
+    <!-- v1.90：教材 PDF 接地生成 / 错题本 / 公式渲染 / 提示词设置化 -->
+    <string name="close">关闭</string>
+    <string name="ai_prompt_field">解题提示词（AI 解题 / 判题风格）</string>
+    <string name="ai_prompt_tip">提示词会随题目一起发给 AI；公式要求、讲解风格都写在这里</string>
+    <string name="ai_prompt_reset">恢复默认提示词</string>
+    <string name="ai_prompt_reset_done">已恢复默认提示词</string>
+    <string name="ai_prompt_in_settings">提示词已移至「设置 → AI 接口」：%1$s…（点击修改）</string>
+
+    <string name="textbook_pdf_section">教材 PDF（推荐）</string>
+    <string name="textbook_pdf_hint">上传教材 PDF 后，目录与小节讲解只依据 PDF 原文生成（而不是 AI 内训记忆），能显著减少幻觉；文件只在本机解析，不会上传</string>
+    <string name="textbook_pdf_pick">上传教材 PDF</string>
+    <string name="textbook_pdf_remove">移除 PDF</string>
+    <string name="textbook_pdf_reading">正在解析 PDF 并抽取文字…</string>
+    <string name="textbook_pdf_ready">已就绪：%1$s · 共 %2$d 页 · 抽出 %3$d 字</string>
+    <string name="textbook_pdf_none">未上传 PDF：AI 只能凭自身知识生成，可能有偏差（上传教材 PDF 更准确）</string>
+    <string name="textbook_pdf_no_text">已读取 %1$s，但几乎没抽到文字（可能是扫描版 PDF），建议改用「拍照目录页」或换文字版 PDF</string>
+    <string name="textbook_pdf_failed">PDF 解析失败：%1$s</string>
+    <string name="textbook_generating_grounded">正在依据教材 PDF 原文整理目录…</string>
+    <string name="textbook_generating_mistakes">正在生成目录（已结合错题本易错点）…</string>
+    <string name="textbook_generating_grounded_mistakes">正在依据教材 PDF 原文整理目录（已结合错题本易错点）…</string>
+    <string name="section_with_mistakes">已结合错题本重点</string>
+    <string name="section_grounded_short">依据教材原文</string>
+    <string name="section_grounded_by_pdf">依据教材原文生成：%1$s</string>
+    <string name="section_pdf_not_found">未在本节标题处定位到原文，已按通用知识生成</string>
+
+    <string name="mistake_title">错题本</string>
+    <string name="mistake_search_hint">搜索题目 / 关键词 / 学科</string>
+    <string name="mistake_pending_only">只看未掌握</string>
+    <string name="mistake_empty">还没有错题\n在「AI 解题」里点「这题我算错了」，或在复习时点「这词我记错了」，就会自动记录到这里</string>
+    <string name="mistake_count">共 %1$d 条 · 未掌握 %2$d 条</string>
+    <string name="mistake_clear_mastered">清除已掌握（%1$d）</string>
+    <string name="mistake_cleared">已清除 %1$d 条已掌握的错题</string>
+    <string name="mistake_source_line">%1$s · %2$s</string>
+    <string name="mistake_source_ai">AI 解题</string>
+    <string name="mistake_source_review">复习单词</string>
+    <string name="mistake_source_study">每日学习</string>
+    <string name="mistake_mastered">已掌握</string>
+    <string name="mistake_pending">未掌握</string>
+    <string name="mistake_detail_title">错题详情</string>
+    <string name="mistake_mark_mastered">标记已掌握</string>
+    <string name="mistake_unmark">取消已掌握</string>
+    <string name="mistake_marked">已标记为掌握</string>
+    <string name="mistake_unmarked">已取消「掌握」标记</string>
+    <string name="mistake_edit_note">补充错因</string>
+    <string name="mistake_note_hint">例如：符号写错 / 公式记混 / 单位忘了换算</string>
+    <string name="mistake_note_label">错因：%1$s</string>
+    <string name="mistake_note_empty">还没写错因，点「补充错因」记一下当时为什么错</string>
+    <string name="mistake_note_saved">错因已保存</string>
+    <string name="mistake_reexplain">AI 再讲一遍</string>
+    <string name="mistake_mark_wrong">这题我算错了</string>
+    <string name="mistake_saved_ask_note">已记入错题本，下次生成目录 / 讲解时会重点覆盖。要顺手补一句错因吗？</string>
+    <string name="mistake_need_question">请先输入题目文本（或先解题一次）再记错题</string>
+    <string name="mistake_image_question">图片题目（来自 AI 解题）</string>
+    <string name="mistake_home_empty">暂无错题 · 解题时点「这题我算错了」自动收集</string>
+    <string name="mistake_home_summary">未掌握 %1$d 题 · 生成内容时重点推送</string>
+    <string name="mistake_entry_line">错题本 · 未掌握 %1$d 题（自动收集，生成内容时重点推送）</string>
+    <string name="review_mark_mistake">这词我记错了 · 存入错题本</string>
+    <string name="review_mistake_saved">已把「%1$s」记入错题本</string>
 </resources>

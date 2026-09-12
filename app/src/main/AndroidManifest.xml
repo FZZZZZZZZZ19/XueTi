@@ -37,6 +37,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".MistakeActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".TextbookListActivity"
             android:exported="false" />
 

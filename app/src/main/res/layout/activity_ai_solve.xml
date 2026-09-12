@@ -183,27 +183,35 @@
                     android:minLines="3" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- 提示词（自定义） -->
-            <com.google.android.material.textfield.TextInputLayout
+            <!-- 提示词已移到「设置 → AI 接口」，这里只显示入口 -->
+            <TextView
+                android:id="@+id/promptHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:hint="@string/ai_prompt_hint">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etPrompt"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="top"
-                    android:inputType="textMultiLine"
-                    android:minLines="4" />
-            </com.google.android.material.textfield.TextInputLayout>
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="8dp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp" />
 
             <TextView
                 android:id="@+id/apiHint"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingVertical="8dp"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/mistakeEntry"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:background="?attr/selectableItemBackground"
                 android:clickable="true"
                 android:focusable="true"
@@ -286,14 +294,38 @@
                             android:textSize="14sp" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvResult"
+                    <WebView
+                        android:id="@+id/resultWeb"
+                        android:layout_width="match_parent"
+                        android:layout_height="360dp"
+                        android:layout_marginTop="8dp"
+                        android:background="@android:color/transparent" />
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:lineSpacingExtra="4dp"
-                        android:textIsSelectable="true"
-                        android:textSize="14sp" />
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnMarkWrong"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/mistake_mark_wrong"
+                            android:textSize="13sp" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnMistakes"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="@string/mistake_title"
+                            android:textSize="13sp" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

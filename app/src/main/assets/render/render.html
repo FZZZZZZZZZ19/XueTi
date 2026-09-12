@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="katex.min.css">
+    <script src="katex.min.js"></script>
+    <script src="auto-render.min.js"></script>
+    <script src="marked.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            -webkit-text-size-adjust: 100%;
+        }
+        body {
+            font-family: -apple-system, "Noto Sans SC", "Source Han Sans", sans-serif;
+            line-height: 1.65;
+            padding: 2px 0 8px 0;
+        }
+        h1, h2, h3, h4 { line-height: 1.35; margin: 14px 0 6px 0; font-weight: 600; }
+        h1 { font-size: 1.28em; }
+        h2 { font-size: 1.18em; }
+        h3 { font-size: 1.08em; }
+        h4 { font-size: 1.0em; }
+        p { margin: 6px 0; }
+        ul, ol { margin: 6px 0; padding-left: 22px; }
+        li { margin: 2px 0; }
+        hr { border: none; border-top: 1px solid rgba(128, 128, 128, 0.35); margin: 12px 0; }
+        code {
+            font-family: "SF Mono", Consolas, monospace;
+            font-size: 0.92em;
+            padding: 1px 4px;
+            border-radius: 4px;
+            background: rgba(128, 128, 128, 0.16);
+        }
+        pre {
+            padding: 10px;
+            border-radius: 8px;
+            overflow-x: auto;
+            background: rgba(128, 128, 128, 0.12);
+        }
+        pre code { background: transparent; padding: 0; }
+        blockquote {
+            margin: 8px 0;
+            padding: 2px 10px;
+            border-left: 3px solid rgba(128, 128, 128, 0.5);
+            opacity: 0.9;
+        }
+        table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+        th, td { border: 1px solid rgba(128, 128, 128, 0.4); padding: 4px 6px; font-size: 0.95em; }
+        th { background: rgba(128, 128, 128, 0.12); }
+        .katex { font-size: 1.06em; }
+        .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; margin: 8px 0; }
+        .katex-error { color: #d32f2f; }
+    </style>
+</head>
+<body>
+<div id="content"></div>
+<script>
+    (function () {
+        var CONTENT = document.getElementById('content');
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+
+        /** 模型偶尔直接输出 \begin{aligned}…\end{aligned}，补上 $$ 才能渲染 */
+        function wrapBareEnvironments(text) {
+            return String(text).replace(
+                /\\begin\{(equation\*?|align\*?|aligned|gather\*?|array|cases|pmatrix|bmatrix|vmatrix|Vmatrix|matrix|split)\}([\s\S]*?)\\end\{\1\}/g,
+                function (match, env) {
+                    if (match.indexOf('$$') === 0) return match;
+                    return '$$' + match + '$$';
+                }
+            );
+        }
+
+        function renderMath() {
+            if (typeof renderMathInElement !== 'function') return;
+            try {
+                renderMathInElement(CONTENT, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false}
+                    ],
+                    throwOnError: false,
+                    errorColor: '#d32f2f',
+                    ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'option']
+                });
+            } catch (e) {
+                /* 渲染失败时保留原始文本，不阻断阅读 */
+            }
+        }
+
+        /**
+         * 渲染 Markdown + LaTeX。
+         * @param text  模型输出的原文
+         * @param color 正文颜色（跟随 App 主题）
+         * @param fontSize 正文字号（px）
+         */
+        window.renderContent = function (text, color, fontSize) {
+            var src = (text === null || text === undefined) ? '' : String(text);
+            document.body.style.color = color || '#111111';
+            document.body.style.fontSize = (fontSize || 15) + 'px';
+            src = wrapBareEnvironments(src);
+            var html = null;
+            try {
+                if (typeof marked !== 'undefined') {
+                    if (typeof marked.parse === 'function') {
+                        html = marked.parse(src);
+                    } else if (typeof marked === 'function') {
+                        html = marked(src);
+                    }
+                }
+            } catch (e) {
+                html = null;
+            }
+            CONTENT.innerHTML = (html === null) ? '<pre>' + escapeHtml(src) + '</pre>' : html;
+            renderMath();
+            return document.body.scrollHeight;
+        };
+
+        /** 纯文本模式（不解析 Markdown，只渲染公式） */
+        window.renderPlain = function (text, color, fontSize) {
+            document.body.style.color = color || '#111111';
+            document.body.style.fontSize = (fontSize || 15) + 'px';
+            CONTENT.innerHTML = escapeHtml(String(text || '')).replace(/\n/g, '<br>');
+            renderMath();
+            return document.body.scrollHeight;
+        };
+
+        window.contentHeight = function () {
+            return document.body.scrollHeight;
+        };
+    })();
+</script>
+</body>
+</html>

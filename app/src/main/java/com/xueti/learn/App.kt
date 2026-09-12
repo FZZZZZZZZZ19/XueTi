@@ -1,6 +1,7 @@
 package com.xueti.learn
 
 import android.app.Application
+import com.tom_roush.pdfbox.android.PDFBoxResourceLoader
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.UsageStore
@@ -25,6 +26,8 @@ class App : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // PDF 文本抽取需要先初始化 PDFBox 的资源（字体/映射表）
+        runCatching { PDFBoxResourceLoader.init(this) }
         wordRepository = WordRepository(this)
         progressStore = ProgressStore(this)
         settings = SettingsStore(this)

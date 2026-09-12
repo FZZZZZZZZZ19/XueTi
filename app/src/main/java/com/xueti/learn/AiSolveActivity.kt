@@ -20,9 +20,11 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.data.MistakeStore
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivityAiSolveBinding
+import com.xueti.learn.util.FormulaRenderer
 import com.xueti.learn.util.ImageEnhancer
 import com.xueti.learn.util.ImageListController
 import com.xueti.learn.util.PeakHours
@@ -42,8 +44,13 @@ class AiSolveActivity : BaseActivity() {
     private lateinit var binding: ActivityAiSolveBinding
     private val settings: SettingsStore get() = (application as App).settings
     private val usageStore by lazy { UsageStore(this) }
+    private val mistakeStore by lazy { MistakeStore(this) }
 
     private lateinit var imageController: ImageListController
+
+    /** 最近一次解题结果（复制 / 记错题用） */
+    private var lastAnswer: String = ""
+    private var lastQuestion: String = ""
 
     /** 增强前的备份（用于「还原」） */
     private var enhanceBackup: Bitmap? = null
@@ -105,8 +112,6 @@ class AiSolveActivity : BaseActivity() {
             }
         )
 
-        binding.etPrompt.setText(settings.aiPrompt)
-
         binding.btnCamera.setOnClickListener { launchCamera() }
         binding.btnGallery.setOnClickListener { pickImages.launch(arrayOf("image/*")) }
         binding.btnCrop.setOnClickListener { cropSelected() }
@@ -115,16 +120,38 @@ class AiSolveActivity : BaseActivity() {
         binding.btnClearImage.setOnClickListener { imageController.clear() }
         binding.btnSolve.setOnClickListener { solve() }
         binding.btnCopyResult.setOnClickListener { copyResult() }
+        binding.btnMarkWrong.setOnClickListener { markWrong() }
+        binding.btnMistakes.setOnClickListener {
+            startActivity(Intent(this, MistakeActivity::class.java))
+        }
+        binding.mistakeEntry.setOnClickListener {
+            startActivity(Intent(this, MistakeActivity::class.java))
+        }
+        binding.promptHint.setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
+        }
         binding.apiHint.setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
         binding.imageStrip.setOnClickListener { }
+        // 解答结果用内置 KaTeX 渲染，数学公式不会再是乱码
+        FormulaRenderer.attach(binding.resultWeb, this)
     }
 
     override fun onResume() {
         super.onResume()
         renderApiHint()
         binding.peakHint.text = "${PeakHours.statusText()}；${PeakHours.nextSwitchText()}"
+        binding.promptHint.text = getString(
+            R.string.ai_prompt_in_settings,
+            settings.aiPrompt.lineSequence().firstOrNull().orEmpty().take(24)
+        )
+        renderMistakeEntry()
+    }
+
+    private fun renderMistakeEntry() {
+        binding.mistakeEntry.text =
+            getString(R.string.mistake_entry_line, mistakeStore.pendingCount())
     }
 
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
@@ -133,6 +160,12 @@ class AiSolveActivity : BaseActivity() {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onDestroy() {
+        FormulaRenderer.release(binding.resultWeb)
+        runCatching { binding.resultWeb.destroy() }
+        super.onDestroy()
     }
 
     private fun renderApiHint() {
@@ -255,7 +288,8 @@ class AiSolveActivity : BaseActivity() {
 
     private fun solve() {
         val apiKey = settings.deepSeekApiKey
-        val prompt = binding.etPrompt.text?.toString().orEmpty()
+        // 提示词统一在「设置 → AI 接口 → 解题提示词」里维护
+        val prompt = settings.aiPrompt
         val question = binding.etQuestion.text?.toString()?.trim().orEmpty()
         val images = imageController.base64List()
 
@@ -268,7 +302,6 @@ class AiSolveActivity : BaseActivity() {
             toast(R.string.ai_need_question)
             return
         }
-        settings.aiPrompt = prompt
 
         setLoading(true)
         binding.statusText.text = getString(R.string.ai_solving)
@@ -284,7 +317,9 @@ class AiSolveActivity : BaseActivity() {
             usageStore.record(result.getOrNull()?.usage)
             result.onSuccess { review ->
                 binding.resultCard.isVisible = true
-                binding.tvResult.text = review.answer
+                lastAnswer = review.answer
+                lastQuestion = question
+                FormulaRenderer.render(binding.resultWeb, review.answer, this@AiSolveActivity)
                 val tokens = review.usage?.totalTokens ?: 0
                 binding.statusText.text = getString(R.string.ai_done_tokens, review.model, tokens)
             }.onFailure { error ->
@@ -292,6 +327,50 @@ class AiSolveActivity : BaseActivity() {
                     getString(R.string.ai_failed, error.message ?: "未知错误")
             }
         }
+    }
+
+    /** 这题我算错了：把题目 + AI 解答自动记进错题本 */
+    private fun markWrong() {
+        val question = lastQuestion.ifBlank {
+            binding.etQuestion.text?.toString().orEmpty().trim().ifBlank {
+                if (imageController.count > 0) getString(R.string.mistake_image_question) else ""
+            }
+        }
+        if (question.isBlank()) {
+            toast(R.string.mistake_need_question)
+            return
+        }
+        val item = mistakeStore.add(
+            question = question,
+            aiAnswer = lastAnswer,
+            source = MistakeStore.SOURCE_AI_SOLVE
+        )
+        if (item == null) {
+            toast(R.string.mistake_need_question)
+            return
+        }
+        renderMistakeEntry()
+        // 顺手让用户补一句错因（可跳过）
+        AlertDialog.Builder(this)
+            .setTitle(R.string.mistake_mark_wrong)
+            .setMessage(R.string.mistake_saved_ask_note)
+            .setPositiveButton(R.string.mistake_edit_note) { _, _ ->
+                val input = android.widget.EditText(this).apply {
+                    hint = getString(R.string.mistake_note_hint)
+                    setPadding(48, 24, 48, 24)
+                }
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.mistake_edit_note)
+                    .setView(input)
+                    .setPositiveButton(R.string.goal_save) { _, _ ->
+                        mistakeStore.updateNote(item.id, input.text?.toString().orEmpty())
+                        toast(R.string.mistake_note_saved)
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+            }
+            .setNegativeButton(R.string.close, null)
+            .show()
     }
 
     private fun setLoading(loading: Boolean) {
@@ -303,10 +382,11 @@ class AiSolveActivity : BaseActivity() {
     }
 
     private fun copyResult() {
-        val text = binding.tvResult.text?.toString().orEmpty()
-        if (text.isEmpty()) return
+        if (lastAnswer.isBlank()) return
         val clipboard = getSystemService(ClipboardManager::class.java)
-        clipboard?.setPrimaryClip(ClipData.newPlainText(getString(R.string.ai_result_title), text))
+        clipboard?.setPrimaryClip(
+            ClipData.newPlainText(getString(R.string.ai_result_title), lastAnswer)
+        )
         toast(R.string.ai_copied)
     }
 

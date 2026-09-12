@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.data.MistakeStore
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.databinding.ActivityMainBinding
@@ -53,6 +54,9 @@ class MainActivity : BaseActivity() {
         binding.cardAbout.setOnClickListener {
             toast(getString(R.string.about_slogan))
         }
+        binding.cardMistakes.setOnClickListener {
+            startActivity(Intent(this, MistakeActivity::class.java))
+        }
         binding.cardGoal.setOnClickListener { editGoal() }
 
         maybeAutoCheckUpdate()
@@ -62,6 +66,18 @@ class MainActivity : BaseActivity() {
         super.onResume()
         renderGoalCard()
         renderHubSummary()
+        renderMistakeSummary()
+    }
+
+    /** 首页错题本卡片：未掌握的错题数 */
+    private fun renderMistakeSummary() {
+        val store = MistakeStore(this)
+        val pending = store.pendingCount()
+        binding.mistakeSummary.text = if (pending == 0) {
+            getString(R.string.mistake_home_empty)
+        } else {
+            getString(R.string.mistake_home_summary, pending)
+        }
     }
 
     /** 六级学习卡片副标题：今日进度概况 + 需复习词数 */

@@ -195,6 +195,10 @@ object DeepSeekClient {
                 if (isNotEmpty()) append("\n\n")
                 append("【题目图片】共 ").append(images.size).append(" 张，请综合所有图片作答")
             }
+            // 统一追加排版要求：App 端用 KaTeX 渲染公式，必须是标准 LaTeX
+            if (isNotEmpty()) append("\n\n")
+            append("【排版要求】用 Markdown 组织；所有数学公式用 LaTeX（行内 $...$，独立公式 $$...$$），")
+            append("不要用 Unicode 拼公式；步骤分行写清楚。")
         }
 
         val result = if (images.isEmpty()) {
@@ -227,16 +231,29 @@ object DeepSeekClient {
         edition: String,
         outlineText: String?,
         images: List<String>,
-        style: StudyStyle
+        style: StudyStyle,
+        /** 教材 PDF 抽取的原文片段（提供时以它为准，显著减少幻觉） */
+        sourceText: String? = null,
+        /** 错题本易错点（生成时重点覆盖） */
+        focusPoints: String? = null
     ): Result<OutlineResult> = runCatching {
+        val grounded = !sourceText.isNullOrBlank()
         val prompt = buildString {
             append("你是教材目录整理助手。请为我整理这本书的完整目录（大章 → 小章两级）。\n")
             append("书名：《").append(title.ifBlank { "未提供" }).append("》\n")
             if (publisher.isNotBlank()) append("出版社：").append(publisher).append("\n")
             if (edition.isNotBlank()) append("版次：").append(edition).append("\n")
+            if (grounded) {
+                append("\n【教材原文（唯一依据）】\n")
+                append("下面是用户上传的教材 PDF 中抽取的原文片段：\n")
+                append("<<<PDF\n").append(sourceText!!.trim()).append("\nPDF>>>\n")
+            }
             if (!outlineText.isNullOrBlank()) {
                 append("\n以下是用户提供的目录/大纲内容，请以此为准整理：\n")
                 append(outlineText.trim()).append("\n")
+            }
+            if (!focusPoints.isNullOrBlank()) {
+                append("\n").append(focusPoints.trim()).append("\n")
             }
             if (images.isNotEmpty()) {
                 append("\n用户提供了 ").append(images.size)
@@ -244,9 +261,16 @@ object DeepSeekClient {
             }
             append("\n要求：\n")
             append("1) 尽量完整覆盖全书，一级为大章（如「第一章 绪论」），二级为小章（如「1.1 研究背景」）；\n")
-            append("2) 若信息不足，按该学科通用教材结构合理推断，但不要编造与书名明显无关的内容；\n")
-            append("3) 语言风格：").append(style.prompt).append("\n")
-            append("4) 只输出 JSON，不要任何解释文字。\n")
+            if (grounded) {
+                append("2) **只使用上面 PDF 原文中真实出现的章节标题与编号**；原文没有的内容一律不要添加；\n")
+                append("3) 如果原文片段只覆盖了部分章节，就只输出覆盖到的部分，不要用「常识」补全；\n")
+                append("4) 如果错题本里的易错点正好落在某个小节，请在该小节标题后追加「（易错·重点）」；\n")
+            } else {
+                append("2) 若信息不足，按该学科通用教材结构合理推断，但不要编造与书名明显无关的内容；\n")
+                append("3) 如果错题本里的易错点正好落在某个小节，请在该小节标题后追加「（易错·重点）」；\n")
+            }
+            append("5) 语言风格：").append(style.prompt).append("\n")
+            append("6) 只输出 JSON，不要任何解释文字。\n")
             append("JSON 格式：{\"chapters\":[{\"title\":\"第一章 绪论\",\"sections\":[\"1.1 xxx\",\"1.2 xxx\"]}]}")
         }
 
@@ -294,18 +318,37 @@ object DeepSeekClient {
         bookTitle: String,
         chapterTitle: String,
         sectionTitle: String,
-        style: StudyStyle
+        style: StudyStyle,
+        /** 教材 PDF 里与本小节相关的原文（提供时以它为准） */
+        sourceText: String? = null,
+        /** 错题本易错点（本小节相关） */
+        focusPoints: String? = null
     ): Result<SectionResult> = runCatching {
+        val grounded = !sourceText.isNullOrBlank()
         val prompt = buildString {
             append("你是教材讲解助手，请为下面这一小节整理学习内容。\n")
             append("教材：《").append(bookTitle).append("》\n")
             append("大章：").append(chapterTitle).append("\n")
             append("小节：").append(sectionTitle).append("\n\n")
+            if (grounded) {
+                append("【教材原文（唯一依据）】\n")
+                append("下面是该教材 PDF 中与本小节相关的原文：\n")
+                append("<<<PDF\n").append(sourceText!!.trim()).append("\nPDF>>>\n\n")
+                append("**必须严格依据上面的原文讲解**：原文没有出现的定义、公式、例题一律不要添加；\n")
+                append("如果原文信息不足，请直接写「原文未提及」，不要用你自己的知识补充。\n\n")
+            } else {
+                append("注意：本次没有教材原文，请按该学科的通用知识讲解，不要编造具体页码或原文引用。\n\n")
+            }
+            if (!focusPoints.isNullOrBlank()) {
+                append(focusPoints.trim()).append("\n")
+                append("请在讲解中针对这些易错点额外给出提醒或例题。\n\n")
+            }
             append("语言风格要求：").append(style.prompt).append("\n\n")
             append("请严格分成三个模块输出（没有内容时写明「本节无公式」等，不要留空）：\n")
             append("- knowledge：本节知识点（概念、定义、原理、公式的适用条件、易错点、记忆要点）\n")
-            append("- formulas：本节涉及的公式，用纯文本排版（如 S = v·t），并逐条说明每个符号的含义与单位\n")
-            append("- examples：2~3 道典型例题，每题给出「题目」与「分步解答」\n\n")
+            append("- formulas：本节涉及的公式；**必须用 LaTeX 书写**（行内 $...$，独立公式 \$\$...\$\$），" +
+                "例如 \$\$S = v_0 t + \\frac{1}{2} a t^2\$\$，并逐条说明每个符号的含义与单位；不要用纯文本凑公式\n")
+            append("- examples：2~3 道典型例题，每题给出「题目」与「分步解答」（公式同样用 LaTeX）\n\n")
             append("只输出 JSON，不要任何解释文字。\n")
             append("JSON 格式：{\"knowledge\":\"...\",\"formulas\":\"...\",\"examples\":\"...\"}")
         }

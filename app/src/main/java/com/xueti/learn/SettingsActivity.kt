@@ -264,14 +264,23 @@ class SettingsActivity : BaseActivity() {
     private fun setupAi() {
         binding.etApiKey.setText(settings.deepSeekApiKey)
         binding.etAiModel.setText(settings.aiModel)
+        binding.etAiPrompt.setText(settings.aiPrompt)
         setupModelPicker()
         binding.btnSaveAi.setOnClickListener {
             settings.deepSeekApiKey = binding.etApiKey.text?.toString().orEmpty()
             settings.aiModel = binding.etAiModel.text?.toString()?.trim().orEmpty()
                 .ifEmpty { "deepseek-flash" }
+            settings.aiPrompt = binding.etAiPrompt.text?.toString().orEmpty()
+                .ifBlank { SettingsStore.DEFAULT_AI_PROMPT }
+            binding.etAiPrompt.setText(settings.aiPrompt)
             toast(R.string.ai_settings_saved)
             refreshUsage()
             queryBalance()
+        }
+        binding.btnResetPrompt.setOnClickListener {
+            binding.etAiPrompt.setText(SettingsStore.DEFAULT_AI_PROMPT)
+            settings.aiPrompt = SettingsStore.DEFAULT_AI_PROMPT
+            toast(R.string.ai_prompt_reset_done)
         }
         binding.balanceRow.setOnClickListener { queryBalance() }
 

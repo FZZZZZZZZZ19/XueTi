@@ -145,14 +145,12 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvKnowledge"
+                    <WebView
+                        android:id="@+id/webKnowledge"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="120dp"
                         android:layout_marginTop="8dp"
-                        android:lineSpacingExtra="4dp"
-                        android:textIsSelectable="true"
-                        android:textSize="14sp" />
+                        android:background="@android:color/transparent" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -196,15 +194,12 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvFormulas"
+                    <WebView
+                        android:id="@+id/webFormulas"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="120dp"
                         android:layout_marginTop="8dp"
-                        android:fontFamily="monospace"
-                        android:lineSpacingExtra="4dp"
-                        android:textIsSelectable="true"
-                        android:textSize="14sp" />
+                        android:background="@android:color/transparent" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -248,14 +243,12 @@
                             android:textStyle="bold" />
                     </LinearLayout>
 
-                    <TextView
-                        android:id="@+id/tvExamples"
+                    <WebView
+                        android:id="@+id/webExamples"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
+                        android:layout_height="120dp"
                         android:layout_marginTop="8dp"
-                        android:lineSpacingExtra="4dp"
-                        android:textIsSelectable="true"
-                        android:textSize="14sp" />
+                        android:background="@android:color/transparent" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
         </LinearLayout>

@@ -16,6 +16,7 @@ import com.xueti.learn.adapter.DictionaryAdapter
 import com.xueti.learn.adapter.WordListAdapter
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.data.MistakeStore
 import com.xueti.learn.data.ProgressStore
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.ToDoStore
@@ -48,6 +49,7 @@ class StudyHubActivity : BaseActivity() {
     private val settings by lazy { SettingsStore(this) }
     private val usageStore by lazy { UsageStore(this) }
     private val toDoStore by lazy { ToDoStore(this) }
+    private val mistakeStore by lazy { MistakeStore(this) }
 
     private val adapter = WordListAdapter()
     private val dictAdapter = DictionaryAdapter { word -> showWordDetail(word) }
@@ -242,6 +244,7 @@ class StudyHubActivity : BaseActivity() {
             }
         }
         view.btnReviewUnknown.setOnClickListener { revealReviewAnswer() }
+        view.btnReviewMistake.setOnClickListener { markReviewMistake() }
         view.btnReviewAiSentence.setOnClickListener {
             val word = reviewQueue.firstOrNull() ?: return@setOnClickListener
             runAi(
@@ -340,6 +343,35 @@ class StudyHubActivity : BaseActivity() {
     /** 看完答案后进入下一个词（该词已在「想不起来」时移到队尾） */
     private fun advanceReview() {
         if (reviewQueue.isEmpty()) finishReview() else renderReviewCard()
+    }
+
+    /** 这词我记错了：存进错题本，同时按答错处理（清零并排到队尾） */
+    private fun markReviewMistake() {
+        val view = reviewBinding ?: return
+        val word = reviewQueue.firstOrNull() ?: return
+        mistakeStore.add(
+            question = "${word.word}  ${word.phonetic}".trim(),
+            aiAnswer = buildString {
+                append("${word.pos} ${word.meaning}".trim())
+                if (word.example.isNotBlank()) {
+                    append("\n\n例句：").append(word.example)
+                    if (word.exampleCn.isNotBlank()) append("\n").append(word.exampleCn)
+                }
+            },
+            source = MistakeStore.SOURCE_REVIEW,
+            subject = "英语"
+        )
+        store.resetReviewCorrect(word.word)
+        reviewQueue.removeFirst()
+        reviewQueue.addLast(word)
+        reviewAwaitingNext = true
+
+        toast(getString(R.string.review_mistake_saved, word.word))
+        view.reviewAnswerBox.isVisible = true
+        view.reviewFeedback.isVisible = true
+        view.reviewFeedback.text = getString(R.string.review_unknown_tip)
+        view.btnReviewUnknown.isVisible = false
+        view.btnReviewKnown.setText(R.string.review_next)
     }
 
     private fun finishReview() {

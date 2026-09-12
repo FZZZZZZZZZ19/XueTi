@@ -90,6 +90,15 @@
             android:textSize="12sp" />
 
         <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnReviewMistake"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/review_mark_mistake"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnReviewAiSentence"
             style="?attr/materialButtonOutlinedStyle"
             android:layout_width="match_parent"

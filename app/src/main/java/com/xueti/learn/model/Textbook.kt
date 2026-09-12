@@ -102,11 +102,16 @@ data class Textbook(
     val styleKey: String,
     val createdAt: Long,
     val chapters: List<Chapter>,
-    val contents: Map<String, SectionContent> = emptyMap()
+    val contents: Map<String, SectionContent> = emptyMap(),
+    /** 已上传教材 PDF 的文件名（空表示没有 PDF，生成时靠模型知识） */
+    val sourcePdfName: String = "",
+    /** 该 PDF 的页数 */
+    val sourcePdfPages: Int = 0
 ) {
     val chapterCount: Int get() = chapters.size
     val sectionCount: Int get() = chapters.sumOf { it.sections.size }
     val studiedCount: Int get() = contents.size
+    val hasPdf: Boolean get() = sourcePdfName.isNotBlank()
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id)
@@ -115,6 +120,8 @@ data class Textbook(
         put("edition", edition)
         put("styleKey", styleKey)
         put("createdAt", createdAt)
+        put("sourcePdfName", sourcePdfName)
+        put("sourcePdfPages", sourcePdfPages)
         val arr = JSONArray()
         chapters.forEach { arr.put(it.toJson()) }
         put("chapters", arr)
@@ -139,7 +146,9 @@ data class Textbook(
                 styleKey = o.optString("styleKey", StudyStyle.PLAIN.key),
                 createdAt = o.optLong("createdAt", System.currentTimeMillis()),
                 chapters = (0 until arr.length()).map { Chapter.fromJson(arr.getJSONObject(it)) },
-                contents = contents
+                contents = contents,
+                sourcePdfName = o.optString("sourcePdfName"),
+                sourcePdfPages = o.optInt("sourcePdfPages", 0)
             )
         }
     }

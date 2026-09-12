@@ -10,18 +10,23 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.data.MistakeStore
+import com.xueti.learn.data.PdfTextExtractor
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.TextbookStore
 import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivitySectionStudyBinding
 import com.xueti.learn.model.SectionContent
 import com.xueti.learn.model.StudyStyle
+import com.xueti.learn.util.FormulaRenderer
 import com.xueti.learn.util.PeakHours
 import kotlinx.coroutines.launch
 
 /**
- * 小章学习：让 AI 把本节整理成「知识点 / 公式 / 例题」三个模块，分别显示在三个框中。
- * 语言风格可选：直白易懂 / 严谨全面（切换后可重新生成）。
+ * 小章学习：让 AI 把本节整理成「知识点 / 公式 / 例题」三个模块。
+ * - 语言风格可选：直白易懂 / 严谨全面（切换后可重新生成）
+ * - **若这本书上传过教材 PDF**，AI 只依据 PDF 原文讲解（显著减少幻觉）
+ * - 公式用内置 KaTeX 渲染；生成时自动带上错题本里的相关易错点
  */
 class SectionStudyActivity : BaseActivity() {
 
@@ -29,6 +34,7 @@ class SectionStudyActivity : BaseActivity() {
     private val store by lazy { TextbookStore(this) }
     private val settings: SettingsStore get() = (application as App).settings
     private val usageStore by lazy { UsageStore(this) }
+    private val mistakeStore by lazy { MistakeStore(this) }
 
     private val bookId: String get() = intent.getStringExtra(EXTRA_BOOK_ID).orEmpty()
     private val chapterTitle: String get() = intent.getStringExtra(EXTRA_CHAPTER_TITLE).orEmpty()
@@ -45,11 +51,19 @@ class SectionStudyActivity : BaseActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.title = sectionTitle
 
+        // 公式渲染（内置 KaTeX）
+        FormulaRenderer.attach(binding.webKnowledge, this)
+        FormulaRenderer.attach(binding.webFormulas, this)
+        FormulaRenderer.attach(binding.webExamples, this)
+
         val book = store.get(bookId)
         binding.contextText.text = buildString {
             if (book != null) append("《").append(book.title).append("》")
             if (book?.publisher?.isNotBlank() == true) append(" · ").append(book.publisher)
             if (chapterTitle.isNotBlank()) append("\n").append(chapterTitle)
+            if (book?.hasPdf == true) {
+                append("\n").append(getString(R.string.section_grounded_by_pdf, book.sourcePdfName))
+            }
         }
 
         val saved = book?.contents?.get(sectionTitle)
@@ -79,8 +93,7 @@ class SectionStudyActivity : BaseActivity() {
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        return when (item.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {        return when (item.itemId) {
             android.R.id.home -> {
                 finish()
                 true
@@ -118,6 +131,17 @@ class SectionStudyActivity : BaseActivity() {
         val book = store.get(bookId)
         val style = currentStyle()
 
+        // 有教材 PDF：按小节标题定位原文（严格接地）；再带上相关错题本易错点
+        val pdfPages = PdfTextExtractor.loadPages(this, bookId)
+        val sourceText = if (pdfPages.isNotEmpty()) {
+            PdfTextExtractor.sectionExcerpt(pdfPages, sectionTitle).ifBlank { null }
+        } else {
+            null
+        }
+        val focusPoints = mistakeStore
+            .buildFocusPrompt(limit = 8, maxChars = 140, keyword = sectionTitle)
+            .ifBlank { null }
+
         setLoading(true)
         binding.statusText.text = getString(R.string.section_generating)
         lifecycleScope.launch {
@@ -127,7 +151,9 @@ class SectionStudyActivity : BaseActivity() {
                 bookTitle = book?.title ?: "",
                 chapterTitle = chapterTitle,
                 sectionTitle = sectionTitle,
-                style = style
+                style = style,
+                sourceText = sourceText,
+                focusPoints = focusPoints
             )
             setLoading(false)
             usageStore.record(result.getOrNull()?.usage)
@@ -135,11 +161,19 @@ class SectionStudyActivity : BaseActivity() {
                 store.saveContent(bookId, sectionTitle, sectionResult.content)
                 render(sectionResult.content)
                 val tokens = sectionResult.usage?.totalTokens ?: 0
-                binding.statusText.text = getString(
-                    R.string.section_generated_tokens,
-                    style.label,
-                    tokens
-                )
+                binding.statusText.text = buildString {
+                    append(getString(R.string.section_generated_tokens, style.label, tokens))
+                    if (sourceText != null) {
+                        append(" · ").append(getString(R.string.section_grounded_short))
+                    }
+                    if (focusPoints != null) {
+                        append(" · ").append(getString(R.string.section_with_mistakes))
+                    }
+                }
+                if (pdfPages.isNotEmpty() && sourceText == null) {
+                    binding.statusText.text = getString(R.string.section_pdf_not_found) +
+                        " · " + binding.statusText.text
+                }
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.section_generate_failed, error.message ?: "未知错误")
@@ -147,14 +181,29 @@ class SectionStudyActivity : BaseActivity() {
         }
     }
 
+    /** 三个模块都用 KaTeX 渲染，并按内容自动调整高度 */
     private fun render(content: SectionContent) {
         currentContent = content
-        binding.tvKnowledge.text = content.knowledge
-        binding.tvFormulas.text = content.formulas
-        binding.tvExamples.text = content.examples
+        renderModule(binding.webKnowledge, content.knowledge)
+        renderModule(binding.webFormulas, content.formulas)
+        renderModule(binding.webExamples, content.examples)
         binding.knowledgeCard.isVisible = true
         binding.formulaCard.isVisible = true
         binding.exampleCard.isVisible = true
+    }
+
+    private fun renderModule(web: android.webkit.WebView, text: String) {
+        FormulaRenderer.render(web, text, this) { heightCss ->
+            val target = (heightCss * resources.displayMetrics.density).toInt() +
+                (resources.displayMetrics.density * 18).toInt()
+            val params = web.layoutParams
+            val minimum = (96 * resources.displayMetrics.density).toInt()
+            val finalHeight = maxOf(target, minimum)
+            if (params.height != finalHeight) {
+                params.height = finalHeight
+                web.layoutParams = params
+            }
+        }
     }
 
     private fun copyAll() {
@@ -179,6 +228,14 @@ class SectionStudyActivity : BaseActivity() {
         binding.btnGenerate.text = getString(
             if (loading) R.string.section_generating else R.string.section_start_study
         )
+    }
+
+    override fun onDestroy() {
+        listOf(binding.webKnowledge, binding.webFormulas, binding.webExamples).forEach { web ->
+            FormulaRenderer.release(web)
+            runCatching { web.destroy() }
+        }
+        super.onDestroy()
     }
 
     private fun toast(resId: Int) {
