@@ -487,4 +487,54 @@
     <string name="example_already_added">这道题已经在精选题库里了</string>
     <string name="example_index">例题 %1$d</string>
     <string name="example_empty">本节没有生成例题</string>
+
+    <!-- v2.00：小节内容可自编辑增删 + 自建例题（打字/拍照/AI 提取）+ 小节 AI 实时对话 -->
+    <string name="module_edit">编辑</string>
+    <string name="section_regenerate">重新生成</string>
+    <string name="section_regenerate_confirm">这一节你手动编辑过（知识点 / 公式 / 例题），重新生成会用 AI 的新内容覆盖，确定继续吗？</string>
+    <string name="module_edit_title">编辑%1$s</string>
+    <string name="module_edit_tip">支持 Markdown 与 LaTeX：行内公式写 $...$，独立公式写 $$...$$；可直接增删文字</string>
+    <string name="module_saved">%1$s已保存</string>
+
+    <string name="example_new">+ 添加例题</string>
+    <string name="example_add_manual">自己打字输入</string>
+    <string name="example_add_camera">拍照，让 AI 提取题目</string>
+    <string name="example_add_gallery">从相册选图，让 AI 提取题目</string>
+    <string name="example_edit">编辑</string>
+    <string name="example_delete">删除</string>
+    <string name="example_delete_confirm">确定删除「%1$s」吗？</string>
+    <string name="example_deleted">已删除该例题</string>
+    <string name="example_saved">例题已保存</string>
+    <string name="example_saved_new">已添加新例题</string>
+    <string name="example_user_title">自建例题 %1$d</string>
+    <string name="example_user_tag">· 自建</string>
+    <string name="example_edit_hint">可编辑 / 删除，喜欢的题点「+」收藏</string>
+    <string name="example_edit_tip">题干与解答都支持 Markdown 与 LaTeX（$...$ / $$...$$）；解答可自己写，也可点「AI 生成答案」</string>
+    <string name="example_question_field">题干</string>
+    <string name="example_solution_field">解答 / 做题步骤（可留空，之后用 AI 生成）</string>
+    <string name="example_need_question">请先填写题干</string>
+    <string name="example_ai_solution">AI 生成答案</string>
+    <string name="example_solution_prompt">请解答下面这道题（来自教材小节「%1$s」）：先给最终答案，再分步骤写清做题过程，并指出最容易出错的地方。</string>
+    <string name="example_solution_generating">正在用 AI 生成解答…</string>
+    <string name="example_solution_done">已生成解答，可继续编辑</string>
+    <string name="example_pick_image">从图片提取题目</string>
+    <string name="example_pick_image_tip">选好图片后会替换当前弹窗内容，请先保存已填写的题干</string>
+    <string name="example_extracting">正在从图片提取题目…</string>
+    <string name="example_extract_prompt">请把图片里的题目完整、准确地提取成文本：只输出题干本身，不要写解答；数学公式用 LaTeX（行内 $...$，独立公式 $$...$$）；如果一图多题，每题之间空一行。</string>
+
+    <string name="chat_title">小节 AI 对话</string>
+    <string name="chat_title_section">AI 对话 · %1$s</string>
+    <string name="chat_context_toggle">展开 / 收起上下文说明</string>
+    <string name="chat_context_summary">《%1$s》 %2$s</string>
+    <string name="chat_context_detail">每次提问都会带上本小节：知识点 %1$d 字 · 公式 %2$d 字 · 例题 %3$d 道</string>
+    <string name="chat_no_content">提示：本节还没有生成内容，AI 只能凭通用知识回答</string>
+    <string name="chat_input_hint">针对本节提问，例如「这步为什么能约掉？」</string>
+    <string name="chat_send">发送</string>
+    <string name="chat_sending">思考中…</string>
+    <string name="chat_need_question">请先输入问题</string>
+    <string name="chat_copy">复制这段回答</string>
+    <string name="chat_clear">清空对话</string>
+    <string name="chat_clear_confirm">确定清空本小节的对话记录吗？</string>
+    <string name="chat_cleared">对话已清空</string>
+    <string name="chat_first_hint">这一节哪里没看懂？可以直接问我（我会结合本节的知识点、公式和例题回答）</string>
 </resources>

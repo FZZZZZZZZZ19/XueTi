@@ -44,11 +44,58 @@
                 android:textSize="12sp" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="end"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/btnEditExample"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="@string/example_edit"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/btnAiSolveExample"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="@string/example_ai_solution"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/btnDeleteExample"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp"
+                android:text="@string/example_delete"
+                android:textColor="@color/tag_unknown_text"
+                android:textSize="11sp" />
+        </LinearLayout>
+
         <WebView
             android:id="@+id/exampleWeb"
             android:layout_width="match_parent"
             android:layout_height="90dp"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:background="@android:color/transparent" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

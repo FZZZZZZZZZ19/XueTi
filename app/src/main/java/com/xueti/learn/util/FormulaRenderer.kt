@@ -32,6 +32,10 @@ object FormulaRenderer {
 
     /** 初始化 WebView 并加载渲染页；加载完成后会自动渲染最近一次内容 */
     fun attach(webView: WebView, context: Context) {
+        // 重新 attach（列表复用同一个 WebView）时必须先撤销「已就绪」状态，
+        // 否则 render() 会在新页面加载完成前就执行 JS，内容会丢
+        readyViews.remove(webView)
+        pendingText.remove(webView)
         webView.settings.apply {
             javaScriptEnabled = true
             @Suppress("DEPRECATION")

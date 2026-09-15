@@ -137,12 +137,26 @@
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:layout_weight="1"
                             android:text="@string/module_knowledge"
                             android:textSize="15sp"
                             android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnEditKnowledge"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
+                            android:text="@string/module_edit"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <WebView
@@ -186,12 +200,26 @@
                             app:tint="?attr/colorPrimary" />
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:layout_weight="1"
                             android:text="@string/module_formula"
                             android:textSize="15sp"
                             android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/btnEditFormulas"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
+                            android:text="@string/module_edit"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <WebView
@@ -250,6 +278,20 @@
                             android:text="@string/example_add_hint"
                             android:textColor="?attr/colorOnSurfaceVariant"
                             android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/btnNewExample"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="?attr/selectableItemBackground"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="6dp"
+                            android:text="@string/example_new"
+                            android:textColor="?attr/colorPrimary"
+                            android:textSize="12sp" />
                     </LinearLayout>
 
                     <!-- 每道例题一张卡片，右上角「+」加入精选题库 -->

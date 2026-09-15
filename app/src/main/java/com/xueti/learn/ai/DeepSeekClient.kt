@@ -27,6 +27,9 @@ object DeepSeekClient {
     private const val BALANCE_ENDPOINT = "https://api.deepseek.com/user/balance"
     private const val MODELS_ENDPOINT = "https://api.deepseek.com/models"
 
+    /** 小节对话最多带上多少轮历史（避免上下文过长） */
+    private const val MAX_CHAT_HISTORY = 12
+
     /** token 用量 */
     data class Usage(
         val promptTokens: Int,
@@ -108,6 +111,63 @@ object DeepSeekClient {
             append("4) 最后用「搭配提示：」总结常见搭配与易错点（一句话）。\n")
         }
     )
+
+    // ---------------- 小节 AI 对话（多轮，带当前小节上下文） ----------------
+
+    /** 一条对话消息（role: "user" / "assistant"） */
+    data class ChatTurn(val role: String, val text: String)
+
+    /**
+     * 小节实时对话：每次调用都把**当前小节的知识点 / 公式 / 例题**当作上下文，
+     * 再带上历史对话，让 AI 能针对本小节答疑、补充缺漏。
+     */
+    suspend fun askAboutSection(
+        apiKey: String,
+        model: String,
+        bookTitle: String,
+        chapterTitle: String,
+        sectionTitle: String,
+        knowledge: String,
+        formulas: String,
+        examples: String,
+        history: List<ChatTurn>,
+        question: String
+    ): Result<AskResult> {
+        val prompt = buildString {
+            append("你是这本教材的答疑老师。下面是学生正在学的这一小节的**完整资料**，")
+            append("回答必须紧扣这些资料，并优先使用资料里的定义、符号与结论。\n\n")
+            append("【教材】《").append(bookTitle.ifBlank { "未提供" }).append("》\n")
+            if (chapterTitle.isNotBlank()) append("【大章】").append(chapterTitle).append("\n")
+            append("【小节】").append(sectionTitle).append("\n\n")
+
+            append("====== 本小节资料（知识点）======\n")
+            append(knowledge.trim().ifEmpty { "（本节暂无知识点内容）" }).append("\n\n")
+            append("====== 本小节资料（公式）======\n")
+            append(formulas.trim().ifEmpty { "（本节暂无公式）" }).append("\n\n")
+            append("====== 本小节资料（例题）======\n")
+            append(examples.trim().ifEmpty { "（本节暂无例题）" }).append("\n")
+            append("\n====== 资料结束 ======\n\n")
+
+            if (history.isNotEmpty()) {
+                append("【此前对话】\n")
+                history.takeLast(MAX_CHAT_HISTORY).forEach { turn ->
+                    append(if (turn.role == "user") "学生：" else "你：")
+                        .append(turn.text.trim()).append("\n")
+                }
+                append("\n")
+            }
+
+            append("【学生现在的问题】\n").append(question.trim()).append("\n\n")
+            append("回答要求：\n")
+            append("1) 先直接回答学生的问题；\n")
+            append("2) 如果学生指出资料有缺漏或错误，请指出**具体是知识点 / 公式 / 例题中的哪一条**，")
+            append("并给出**可以直接补充进资料的完整内容**（方便他复制粘贴）；\n")
+            append("3) 需要时举例说明；\n")
+            append("4) 所有数学公式用 LaTeX（行内 \$...\$，独立公式 \$\$...\$\$）；\n")
+            append("5) 中文回答，条理清晰，不要说客套话。")
+        }
+        return ask(apiKey, model, prompt)
+    }
 
     // ---------------- 可用模型列表 ----------------
 

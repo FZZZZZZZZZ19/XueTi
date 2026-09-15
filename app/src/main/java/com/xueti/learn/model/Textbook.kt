@@ -71,7 +71,9 @@ data class ExampleItem(
     val id: String,
     val title: String,
     val question: String,
-    val solution: String
+    val solution: String,
+    /** 用户自己添加或编辑过的题（v2.00） */
+    val userAdded: Boolean = false
 ) {
     /** 用于去重与展示的纯文本（去掉 Markdown 记号） */
     val plainText: String get() = "$question\n$solution"
@@ -81,6 +83,7 @@ data class ExampleItem(
         put("title", title)
         put("question", question)
         put("solution", solution)
+        put("userAdded", userAdded)
     }
 
     companion object {
@@ -88,7 +91,8 @@ data class ExampleItem(
             id = o.optString("id"),
             title = o.optString("title"),
             question = o.optString("question"),
-            solution = o.optString("solution")
+            solution = o.optString("solution"),
+            userAdded = o.optBoolean("userAdded", false)
         )
     }
 }
@@ -101,7 +105,9 @@ data class SectionContent(
     val styleKey: String,
     val generatedAt: Long,
     /** 例题拆分成单题（v1.92）：每道题可单独加入精选题库 */
-    val exampleItems: List<ExampleItem> = emptyList()
+    val exampleItems: List<ExampleItem> = emptyList(),
+    /** 用户手动增删改过（v2.00）：重新生成会覆盖，需先确认 */
+    val customized: Boolean = false
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("knowledge", knowledge)
@@ -109,6 +115,7 @@ data class SectionContent(
         put("examples", examples)
         put("styleKey", styleKey)
         put("generatedAt", generatedAt)
+        put("customized", customized)
         val arr = JSONArray()
         exampleItems.forEach { arr.put(it.toJson()) }
         put("exampleItems", arr)
@@ -125,7 +132,8 @@ data class SectionContent(
                 generatedAt = o.optLong("generatedAt", System.currentTimeMillis()),
                 exampleItems = (0 until arr.length()).mapNotNull { index ->
                     arr.optJSONObject(index)?.let { ExampleItem.fromJson(it) }
-                }
+                },
+                customized = o.optBoolean("customized", false)
             )
         }
     }

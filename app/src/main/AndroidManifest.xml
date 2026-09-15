@@ -45,6 +45,11 @@
             android:exported="false" />
 
         <activity
+            android:name=".SectionChatActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".TextbookListActivity"
             android:exported="false" />
 
