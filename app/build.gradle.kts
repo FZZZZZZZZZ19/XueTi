@@ -11,8 +11,8 @@ android {
         applicationId = "com.xueti.learn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 19
-        versionName = "2.00"
+        versionCode = 20
+        versionName = "2.01"
     }
 
     buildTypes {

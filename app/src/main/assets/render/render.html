@@ -81,6 +81,53 @@
             );
         }
 
+        /**
+         * 【关键】把公式整段"藏起来"再交给 Markdown 解析。
+         *
+         * 原因：CommonMark 会把 \( \) \[ \] \_ \{ \} \* 这类反斜杠序列当作转义符吃掉，
+         * 于是 LaTeX 剩下裸的 \cap、\bar（这正是"公式不显示"的根因）。
+         * 这里先把公式替换成占位符，解析完 Markdown 再原样放回，交给 KaTeX 渲染。
+         */
+        var PLACEHOLDER_PREFIX = '\u0001MATH';
+        var PLACEHOLDER_SUFFIX = '\u0001';
+
+        function protectMath(text) {
+            var store = [];
+            function stash(raw) {
+                store.push(raw);
+                return PLACEHOLDER_PREFIX + (store.length - 1) + PLACEHOLDER_SUFFIX;
+            }
+            var out = wrapBareEnvironments(text);
+            // 1) 独立公式 $$ ... $$
+            out = out.replace(/\$\$([\s\S]*?)\$\$/g, stash);
+            // 2) \[ ... \] → $$ ... $$
+            out = out.replace(/\\\[([\s\S]*?)\\\]/g, function (m, body) {
+                return stash('$$' + body + '$$');
+            });
+            // 3) 行内 \( ... \) → $ ... $
+            out = out.replace(/\\\(([\s\S]*?)\\\)/g, function (m, body) {
+                return stash('$' + body + '$');
+            });
+            // 4) 行内 $ ... $（不跨行）
+            out = out.replace(/\$([^$\n]+?)\$/g, stash);
+            // 5) 剩下的裸 LaTeX 环境
+            out = wrapBareEnvironments(out).replace(/\$\$([\s\S]*?)\$\$/g, function (m) {
+                return stash(m);
+            });
+            return {text: out, store: store};
+        }
+
+        function restoreMath(html, store) {
+            if (!store.length) return html;
+            return html.replace(
+                new RegExp(PLACEHOLDER_PREFIX + '(\\d+)' + PLACEHOLDER_SUFFIX, 'g'),
+                function (m, index) {
+                    var raw = store[parseInt(index, 10)];
+                    return (raw === undefined) ? m : raw;
+                }
+            );
+        }
+
         function renderMath() {
             if (typeof renderMathInElement !== 'function') return;
             try {
@@ -110,20 +157,27 @@
             var src = (text === null || text === undefined) ? '' : String(text);
             document.body.style.color = color || '#111111';
             document.body.style.fontSize = (fontSize || 15) + 'px';
-            src = wrapBareEnvironments(src);
+
+            var protectedResult = protectMath(src);
             var html = null;
             try {
                 if (typeof marked !== 'undefined') {
                     if (typeof marked.parse === 'function') {
-                        html = marked.parse(src);
+                        html = marked.parse(protectedResult.text);
                     } else if (typeof marked === 'function') {
-                        html = marked(src);
+                        html = marked(protectedResult.text);
                     }
                 }
             } catch (e) {
                 html = null;
             }
-            CONTENT.innerHTML = (html === null) ? '<pre>' + escapeHtml(src) + '</pre>' : html;
+            if (html === null) {
+                // Markdown 解析不可用时退化为纯文本，但仍要渲染公式
+                html = escapeHtml(src).replace(/\n/g, '<br>');
+            } else {
+                html = restoreMath(html, protectedResult.store);
+            }
+            CONTENT.innerHTML = html;
             renderMath();
             return document.body.scrollHeight;
         };
