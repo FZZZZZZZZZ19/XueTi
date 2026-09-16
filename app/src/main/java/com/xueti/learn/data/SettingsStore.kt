@@ -71,6 +71,18 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_AI_MODEL, null) ?: "deepseek-flash"
         set(value) = prefs.edit().putString(KEY_AI_MODEL, value.trim().ifEmpty { "deepseek-flash" }).apply()
 
+    // ---------------- 提醒自检（v2.03） ----------------
+
+    /** 最近一次成功排定闹钟的时间（0 = 从未排定） */
+    var reminderScheduledAt: Long
+        get() = prefs.getLong(KEY_REMINDER_SCHEDULED_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_REMINDER_SCHEDULED_AT, value).apply()
+
+    /** 最近一次**实际触发**提醒的时间（0 = 从未触发，可用来判断闹钟是否被系统吃掉） */
+    var reminderFiredAt: Long
+        get() = prefs.getLong(KEY_REMINDER_FIRED_AT, 0L)
+        set(value) = prefs.edit().putLong(KEY_REMINDER_FIRED_AT, value).apply()
+
     companion object {
         private const val KEY_THEME_STYLE = "theme_style"
         private const val KEY_BACKGROUND_URI = "background_uri"
@@ -84,6 +96,8 @@ class SettingsStore(context: Context) {
         private const val KEY_DEEPSEEK_KEY = "deepseek_api_key"
         private const val KEY_AI_PROMPT = "ai_prompt"
         private const val KEY_AI_MODEL = "ai_model"
+        private const val KEY_REMINDER_SCHEDULED_AT = "reminder_scheduled_at"
+        private const val KEY_REMINDER_FIRED_AT = "reminder_fired_at"
 
         /** 默认提示词（可在 设置 → AI 接口 → 解题提示词 中修改） */
         const val DEFAULT_AI_PROMPT =

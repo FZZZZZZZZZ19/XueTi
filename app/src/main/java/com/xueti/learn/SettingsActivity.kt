@@ -103,6 +103,8 @@ class SettingsActivity : BaseActivity() {
     override fun onResume() {
         super.onResume()
         refreshUsage()
+        // 回到设置页时刷新提醒诊断（用户可能刚在系统里授权了精确闹钟）
+        if (::binding.isInitialized) renderReminderDiagnostics()
         // 有 Key 时自动刷新一次余额
         if (settings.deepSeekApiKey.isNotBlank()) {
             queryBalance()
@@ -208,6 +210,11 @@ class SettingsActivity : BaseActivity() {
         // 国产 ROM 后台限制排障入口
         binding.reminderHelpRow.setOnClickListener { openReminderHelp() }
 
+        // v2.03 诊断与一键修复
+        binding.exactAlarmRow.setOnClickListener { fixExactAlarm() }
+        binding.batteryRow.setOnClickListener { fixBatteryOptimization() }
+        binding.rescheduleRow.setOnClickListener { rescheduleReminder(manual = true) }
+
         // 自定义提醒句子
         binding.etReminderText.setText(settings.reminderText)
         binding.btnSaveReminderText.setOnClickListener {
@@ -234,18 +241,95 @@ class SettingsActivity : BaseActivity() {
 
     private fun openReminderHelp() {
         toast(R.string.reminder_help_toast)
+        // 先尝试国产 ROM 的「自启动管理」，再退到应用信息页 / 电池优化列表
+        val autostart = ReminderScheduler.autostartIntent(this)
+        if (autostart != null && runCatching { startActivity(autostart) }.isSuccess) return
         val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
         runCatching { startActivity(intent) }.onFailure {
-            runCatching {
-                startActivity(
-                    Intent(
-                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                        Uri.fromParts("package", packageName, null)
-                    )
-                )
-            }
+            runCatching { startActivity(ReminderScheduler.appSettingsIntent(this)) }
         }
     }
+
+    // ---------------- 提醒自检（v2.03） ----------------
+
+    /** 申请「闹钟与提醒」精确闹钟权限；已授权时提示无需操作 */
+    private fun fixExactAlarm() {
+        if (ReminderScheduler.canScheduleExactAlarms(this)) {
+            toast(R.string.reminder_exact_already)
+            return
+        }
+        val intent = ReminderScheduler.exactAlarmSettingsIntent(this)
+        if (intent == null) {
+            toast(R.string.reminder_exact_not_needed)
+            return
+        }
+        val opened = runCatching { startActivity(intent) }.isSuccess
+        if (!opened) {
+            runCatching { startActivity(ReminderScheduler.appSettingsIntent(this)) }
+        }
+        toast(R.string.reminder_exact_howto)
+    }
+
+    /** 申请忽略电池优化（部分 ROM 只能手动开） */
+    private fun fixBatteryOptimization() {
+        if (ReminderScheduler.isIgnoringBatteryOptimizations(this)) {
+            toast(R.string.reminder_battery_already)
+            return
+        }
+        val request = ReminderScheduler.ignoreBatteryOptimizationIntent(this)
+        val opened = runCatching { startActivity(request) }.isSuccess
+        if (!opened) {
+            runCatching { startActivity(ReminderScheduler.batterySettingsIntent()) }
+                .onFailure { runCatching { startActivity(ReminderScheduler.appSettingsIntent(this)) } }
+        }
+        toast(R.string.reminder_battery_howto)
+    }
+
+    /** 手动重排闹钟，并立刻刷新诊断信息 */
+    private fun rescheduleReminder(manual: Boolean) {
+        if (!settings.reminderEnabled) {
+            toast(R.string.reminder_reschedule_disabled)
+            return
+        }
+        ReminderScheduler.schedule(this, settings.reminderHour, settings.reminderMinute)
+        renderReminderDiagnostics()
+        if (manual) toast(getString(R.string.reminder_rescheduled))
+    }
+
+    /** 把「下次提醒 + 三项权限状态 + 上次实际触发」显示出来，能一眼看出被卡在哪 */
+    private fun renderReminderDiagnostics() {
+        val nextText = ReminderScheduler.nextTriggerText(settings.reminderHour, settings.reminderMinute)
+        val scheduled = ReminderScheduler.hasPendingAlarm(this)
+        val exact = ReminderScheduler.canScheduleExactAlarms(this)
+        val battery = ReminderScheduler.isIgnoringBatteryOptimizations(this)
+        val canNotify = ReminderNotifier.canNotify(this)
+        val firedAt = settings.reminderFiredAt
+        val firedText = if (firedAt <= 0L) {
+            getString(R.string.reminder_fired_never)
+        } else {
+            getString(R.string.reminder_fired_at, formatDateTime(firedAt))
+        }
+
+        binding.reminderNextText.text = buildString {
+            append(getString(R.string.reminder_next_line, nextText))
+            append("\n").append(getString(R.string.reminder_alarm_state, getString(if (scheduled) R.string.reminder_state_ok else R.string.reminder_state_missing)))
+            append("\n").append(getString(R.string.reminder_notify_state, getString(if (canNotify) R.string.reminder_state_ok else R.string.reminder_state_missing)))
+            append("\n").append(firedText)
+            append("\n").append(getString(R.string.reminder_diag_tip))
+        }
+
+        binding.exactAlarmState.text =
+            getString(if (exact) R.string.reminder_state_ok else R.string.reminder_state_tap_fix)
+        binding.exactAlarmState.setTextColor(ContextCompat.getColor(this, if (exact) R.color.tag_known_text else R.color.tag_unknown_text))
+        binding.batteryState.text =
+            getString(if (battery) R.string.reminder_state_ok else R.string.reminder_state_tap_fix)
+        binding.batteryState.setTextColor(ContextCompat.getColor(this, if (battery) R.color.tag_known_text else R.color.tag_unknown_text))
+        binding.rescheduleState.text = getString(R.string.reminder_reschedule_action)
+    }
+
+    private fun formatDateTime(millis: Long): String =
+        java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
+            .format(java.util.Date(millis))
 
     private fun requestOrEnableReminder() {
         val needsPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -439,10 +523,7 @@ class SettingsActivity : BaseActivity() {
     private fun updateReminderTimeText() {
         binding.reminderTimeValue.text =
             formatTime(settings.reminderHour, settings.reminderMinute)
-        binding.reminderNextText.text = getString(
-            R.string.reminder_next,
-            ReminderScheduler.nextTriggerText(settings.reminderHour, settings.reminderMinute)
-        )
+        renderReminderDiagnostics()
     }
 
     private fun formatTime(hour: Int, minute: Int): String =

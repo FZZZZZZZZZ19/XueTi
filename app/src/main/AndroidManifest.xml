@@ -9,6 +9,10 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- 重启后恢复每日提醒闹钟 -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Android 12+ 精确闹钟（「闹钟与提醒」特殊权限），没有它提醒会被系统延后甚至不触发 -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- 申请忽略电池优化，避免国产 ROM 杀掉后台后闹钟不触发 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:name=".App"
@@ -98,13 +102,17 @@
             </intent-filter>
         </receiver>
 
-        <!-- 开机 / 应用更新后恢复闹钟 -->
+        <!-- 开机 / 应用更新 / 恢复出厂 后恢复闹钟；精确闹钟权限变化时也重排 -->
         <receiver
             android:name=".work.BootReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 
