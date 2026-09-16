@@ -366,6 +366,18 @@ class SettingsActivity : BaseActivity() {
             settings.aiPrompt = SettingsStore.DEFAULT_AI_PROMPT
             toast(R.string.ai_prompt_reset_done)
         }
+
+        // v2.06：严格依据教材原文（只影响有 PDF 原文时的生成与小节对话）
+        binding.swStrictGrounding.isChecked = settings.strictGrounding
+        binding.swStrictGrounding.setOnCheckedChangeListener { _, checked ->
+            settings.strictGrounding = checked
+            toast(
+                getString(
+                    if (checked) R.string.strict_grounding_on else R.string.strict_grounding_off
+                )
+            )
+        }
+
         binding.balanceRow.setOnClickListener { queryBalance() }
 
         suppressReminderListener = true

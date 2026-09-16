@@ -71,6 +71,17 @@ class SettingsStore(context: Context) {
         get() = prefs.getString(KEY_AI_MODEL, null) ?: "deepseek-flash"
         set(value) = prefs.edit().putString(KEY_AI_MODEL, value.trim().ifEmpty { "deepseek-flash" }).apply()
 
+    // ---------------- 严格接地（v2.06） ----------------
+
+    /**
+     * 严格依据教材原文：开启时只允许使用上传 PDF 里的内容，
+     * 原文没有的一律不加（写「原文未提及」）；关闭时允许补充背景知识，
+     * 但要求用「（补充）」明确标出哪些不是原文内容。
+     */
+    var strictGrounding: Boolean
+        get() = prefs.getBoolean(KEY_STRICT_GROUNDING, true)
+        set(value) = prefs.edit().putBoolean(KEY_STRICT_GROUNDING, value).apply()
+
     // ---------------- 提醒自检（v2.03） ----------------
 
     /** 最近一次成功排定闹钟的时间（0 = 从未排定） */
@@ -98,6 +109,7 @@ class SettingsStore(context: Context) {
         private const val KEY_AI_MODEL = "ai_model"
         private const val KEY_REMINDER_SCHEDULED_AT = "reminder_scheduled_at"
         private const val KEY_REMINDER_FIRED_AT = "reminder_fired_at"
+        private const val KEY_STRICT_GROUNDING = "strict_grounding"
 
         /** 默认提示词（可在 设置 → AI 接口 → 解题提示词 中修改） */
         const val DEFAULT_AI_PROMPT =

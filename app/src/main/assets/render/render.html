@@ -56,6 +56,15 @@
         .katex { font-size: 1.06em; }
         .katex-display { overflow-x: auto; overflow-y: hidden; padding: 2px 0; margin: 8px 0; }
         .katex-error { color: #d32f2f; }
+        a.pageref {
+            color: #1565c0;
+            text-decoration: none;
+            background: rgba(21, 101, 192, 0.10);
+            border-radius: 4px;
+            padding: 0 4px;
+            font-size: 0.85em;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -128,6 +137,25 @@
             );
         }
 
+        /**
+         * v2.06：把模型标的页码出处 `[p.12]` / `[p.12-14]` 变成可点链接，
+         * 点一下由 App 打开教材 PDF 第 N 页对照原文。
+         * 用 href="xueti-page:N" 自定义 scheme，交给 Android 侧拦截。
+         */
+        function linkifyPageRefs() {
+            var html = CONTENT.innerHTML;
+            if (!html || html.indexOf('[p.') < 0) return;
+            CONTENT.innerHTML = html.replace(
+                /\[p\.(\d{1,4})(?:\s*[-–~]\s*(\d{1,4}))?\]/g,
+                function (match, start, end) {
+                    var page = parseInt(start, 10);
+                    if (!page) return match;
+                    var label = end ? ('p.' + start + '-' + end) : ('p.' + start);
+                    return '<a class="pageref" href="xueti-page:' + page + '">' + label + '</a>';
+                }
+            );
+        }
+
         function renderMath() {
             if (typeof renderMathInElement !== 'function') return;
             try {
@@ -178,6 +206,7 @@
                 html = restoreMath(html, protectedResult.store);
             }
             CONTENT.innerHTML = html;
+            linkifyPageRefs();
             renderMath();
             return document.body.scrollHeight;
         };

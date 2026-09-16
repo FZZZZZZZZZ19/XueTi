@@ -21,6 +21,9 @@ object FormulaRenderer {
     private const val PAGE_URL = "file:///android_asset/render/render.html"
     private const val FONT_SIZE_PX = 14.5
 
+    /** 页码链接的 scheme，渲染页里 href="xueti-page:12" */
+    private const val PAGE_SCHEME = "xueti-page:"
+
     /** 已加载完成的 WebView（弱引用，跟随页面回收） */
     private val readyViews: MutableSet<WebView> =
         Collections.newSetFromMap(WeakHashMap<WebView, Boolean>())
@@ -29,6 +32,14 @@ object FormulaRenderer {
     private class Pending(val text: String, val onHeight: ((Int) -> Unit)?)
 
     private val pendingText = WeakHashMap<WebView, Pending>()
+
+    /** 每页页码出处 `[p.N]` 的点击回调（v2.06：点了直接打开对应 PDF 页） */
+    private val pageClickHandlers = WeakHashMap<WebView, (Int) -> Unit>()
+
+    /** 注册页码点击回调（必须在 [attach] 之后调用，或先 attach 再注册也行） */
+    fun setPageClickHandler(webView: WebView, handler: (Int) -> Unit) {
+        pageClickHandlers[webView] = handler
+    }
 
     /** 初始化 WebView 并加载渲染页；加载完成后会自动渲染最近一次内容 */
     fun attach(webView: WebView, context: Context) {
@@ -50,8 +61,28 @@ object FormulaRenderer {
                 readyViews.add(view)
                 pendingText.remove(view)?.let { renderNow(view, it.text, context, it.onHeight) }
             }
+
+            /** 拦截 xueti-page:N，交给 App 打开 PDF 对应页 */
+            override fun shouldOverrideUrlLoading(
+                view: WebView,
+                request: android.webkit.WebResourceRequest
+            ): Boolean = handlePageLink(view, request.url?.toString())
+
+            @Suppress("DEPRECATION")
+            override fun shouldOverrideUrlLoading(view: WebView, url: String?): Boolean =
+                handlePageLink(view, url)
         }
         webView.loadUrl(PAGE_URL)
+    }
+
+    /** 处理 page 链接；不是 page 链接就交给 WebView 自己（返回 false） */
+    private fun handlePageLink(webView: WebView, url: String?): Boolean {
+        if (url == null || !url.startsWith(PAGE_SCHEME)) return false
+        val page = url.removePrefix(PAGE_SCHEME).substringBefore('/').toIntOrNull()
+        if (page != null && page > 0) {
+            pageClickHandlers[webView]?.invoke(page)
+        }
+        return true
     }
 
     /** 渲染文本（Markdown + LaTeX）；页面未就绪时自动排队 */
@@ -97,6 +128,7 @@ object FormulaRenderer {
     fun release(webView: WebView) {
         readyViews.remove(webView)
         pendingText.remove(webView)
+        pageClickHandlers.remove(webView)
     }
 
     /** 解析主题颜色（失败时退回深灰，保证在深浅色主题下都能看清） */

@@ -162,7 +162,8 @@ class SectionChatActivity : BaseActivity() {
                 formulas = formulas,
                 examples = examples,
                 history = history,
-                question = question
+                question = question,
+                strict = settings.strictGrounding
             )
             setLoading(false)
             usageStore.record(result.getOrNull()?.usage)

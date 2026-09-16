@@ -125,9 +125,11 @@ class SectionStudyActivity : BaseActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         binding.toolbar.title = sectionTitle
 
-        // 公式渲染（内置 KaTeX）
-        FormulaRenderer.attach(binding.webKnowledge, this)
-        FormulaRenderer.attach(binding.webFormulas, this)
+        // 公式渲染（内置 KaTeX）；v2.06：正文里的 [p.12] 可点，直接跳 PDF 对应页
+        listOf(binding.webKnowledge, binding.webFormulas).forEach { web ->
+            FormulaRenderer.attach(web, this)
+            FormulaRenderer.setPageClickHandler(web) { page -> openPdfAt(page) }
+        }
 
         val book = store.get(bookId)
         renderContextText(book)
@@ -258,6 +260,20 @@ class SectionStudyActivity : BaseActivity() {
         )
     }
 
+    /** 点正文里的 [p.12] 出处：打开 PDF 第 12 页纯查看（不走「标记页码」回填） */
+    private fun openPdfAt(page: Int) {
+        if (!PdfFileStore.hasFile(this, bookId)) {
+            toast(R.string.pdf_preview_no_file)
+            return
+        }
+        pendingRangeFields = null
+        pdfPreviewLauncher.launch(
+            Intent(this, PdfPreviewActivity::class.java)
+                .putExtra(PdfPreviewActivity.EXTRA_BOOK_ID, bookId)
+                .putExtra(PdfPreviewActivity.EXTRA_START_PAGE, page.coerceAtLeast(1))
+        )
+    }
+
     /** 预览时的初始页：已保存的起始页 → 自动定位 → 第 1 页 */
     private fun currentPageForPreview(): Int {
         store.get(bookId)?.pageRangeOf(sectionTitle)?.let { return it.start }
@@ -368,7 +384,8 @@ class SectionStudyActivity : BaseActivity() {
                 sectionTitle = sectionTitle,
                 style = style,
                 sourceText = sourceText,
-                focusPoints = focusPoints
+                focusPoints = focusPoints,
+                strict = settings.strictGrounding
             )
             setLoading(false)
             usageStore.record(result.getOrNull()?.usage)
@@ -385,6 +402,12 @@ class SectionStudyActivity : BaseActivity() {
                             } else {
                                 getString(R.string.section_grounded_short)
                             }
+                        )
+                        append(" · ").append(
+                            getString(
+                                if (settings.strictGrounding) R.string.section_strict_tag
+                                else R.string.section_loose_tag
+                            )
                         )
                     }
                     if (focusPoints != null) {
@@ -726,6 +749,7 @@ class SectionStudyActivity : BaseActivity() {
                 if (example.userAdded) append(" ").append(getString(R.string.example_user_tag))
             }
             FormulaRenderer.attach(row.exampleWeb, this)
+            FormulaRenderer.setPageClickHandler(row.exampleWeb) { page -> openPdfAt(page) }
             exampleWebViews.add(row.exampleWeb)
             renderExampleWeb(row.exampleWeb, example)
 

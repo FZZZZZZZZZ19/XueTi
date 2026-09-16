@@ -131,7 +131,9 @@ object DeepSeekClient {
         formulas: String,
         examples: String,
         history: List<ChatTurn>,
-        question: String
+        question: String,
+        /** v2.06：严格模式——资料没写的就直说，不要用通用知识糊过去 */
+        strict: Boolean = true
     ): Result<AskResult> {
         val prompt = buildString {
             append("你是这本教材的答疑老师。下面是学生正在学的这一小节的**完整资料**，")
@@ -160,11 +162,16 @@ object DeepSeekClient {
             append("【学生现在的问题】\n").append(question.trim()).append("\n\n")
             append("回答要求：\n")
             append("1) 先直接回答学生的问题；\n")
-            append("2) 如果学生指出资料有缺漏或错误，请指出**具体是知识点 / 公式 / 例题中的哪一条**，")
+            if (strict) {
+                append("2) **本节资料没写到的内容不要编**，直接说明「本小节资料未涉及」，可提示他去别处查；\n")
+            } else {
+                append("2) 需要补充资料以外的知识时，请用「（补充）」标出那部分不是本节资料内容；\n")
+            }
+            append("3) 如果学生指出资料有缺漏或错误，请指出**具体是知识点 / 公式 / 例题中的哪一条**，")
             append("并给出**可以直接补充进资料的完整内容**（方便他复制粘贴）；\n")
-            append("3) 需要时举例说明；\n")
-            append("4) 所有数学公式用 LaTeX（行内 \$...\$，独立公式 \$\$...\$\$）；\n")
-            append("5) 中文回答，条理清晰，不要说客套话。")
+            append("4) 需要时举例说明；\n")
+            append("5) 所有数学公式用 LaTeX（行内 \$...\$，独立公式 \$\$...\$\$）；\n")
+            append("6) 中文回答，条理清晰，不要说客套话。")
         }
         return ask(apiKey, model, prompt)
     }
@@ -427,7 +434,9 @@ object DeepSeekClient {
         /** 教材 PDF 里与本小节相关的原文（提供时以它为准） */
         sourceText: String? = null,
         /** 错题本易错点（本小节相关） */
-        focusPoints: String? = null
+        focusPoints: String? = null,
+        /** v2.06：严格模式——只依据原文，原文没有的一律不写 */
+        strict: Boolean = true
     ): Result<SectionResult> = runCatching {
         val grounded = !sourceText.isNullOrBlank()
         val prompt = buildString {
@@ -437,10 +446,22 @@ object DeepSeekClient {
             append("小节：").append(sectionTitle).append("\n\n")
             if (grounded) {
                 append("【教材原文（唯一依据）】\n")
-                append("下面是该教材 PDF 中与本小节相关的原文：\n")
+                append("下面是该教材 PDF 中与本小节相关的原文，行首的「【第 N 页】」是**物理页号**：\n")
                 append("<<<PDF\n").append(sourceText!!.trim()).append("\nPDF>>>\n\n")
-                append("**必须严格依据上面的原文讲解**：原文没有出现的定义、公式、例题一律不要添加；\n")
-                append("如果原文信息不足，请直接写「原文未提及」，不要用你自己的知识补充。\n\n")
+                if (strict) {
+                    append("**严格模式（必须遵守）**：\n")
+                    append("1) 只使用上面原文中出现的内容；原文没有出现的定义、公式、例题、数据一律不要添加；\n")
+                    append("2) 原文信息不足时，直接写「原文未提及」，**不要用你自己的知识补充**；\n")
+                    append("3) 原文里没有例题时，examples 只写「原文未举例题」，不要自己编题；\n")
+                    append("4) 若原文结尾出现「原文较长…」提示，说明原文被截断，不要猜测后续内容。\n\n")
+                } else {
+                    append("**以原文为主**：讲解必须建立在上面原文之上；\n")
+                    append("若确有必要补充背景知识或通用例子，**必须用「（补充）」标注**该部分不是原文内容；\n")
+                    append("原文里没有例题时可以举例，但要标注「（补充例题）」。\n\n")
+                }
+                append("**页码出处（必须遵守）**：knowledge / formulas / examples 里每个知识条目、公式、例题，")
+                append("都要在**该条开头**用方括号标出来自哪一页，格式如 `[p.12]`，跨页写 `[p.12-14]`；")
+                append("确实属于补充内容则写 `[补充]`。\n\n")
             } else {
                 append("注意：本次没有教材原文，请按该学科的通用知识讲解，不要编造具体页码或原文引用。\n\n")
             }

@@ -626,4 +626,13 @@
     <string name="book_add_pdf">添加 / 更换教材 PDF</string>
     <string name="book_pdf_added">教材 PDF 已添加（共 %1$d 页）</string>
     <string name="book_pdf_added_ask_map">现在按章节划分页数吗？（划分后讲解只发对应页给 AI）</string>
+
+    <!-- v2.06：严格模式 + 页码出处 -->
+    <string name="strict_grounding">严格依据教材原文</string>
+    <string name="strict_grounding_tip">开启：只讲上传 PDF 里的内容，原文没有的写「原文未提及」，不自己编题；关闭：允许补充背景知识，但会标注「（补充）」</string>
+    <string name="strict_grounding_on">已开启严格模式：只依据教材原文</string>
+    <string name="strict_grounding_off">已关闭严格模式：允许补充背景知识（会标注「补充」）</string>
+    <string name="section_strict_tag">严格依据原文</string>
+    <string name="section_loose_tag">允许补充知识</string>
+    <string name="pdf_preview_jump_hint">从正文出处 %1$s 打开</string>
 </resources>

@@ -70,5 +70,23 @@ const katexOk = katexOut.includes('katex');
 console.log(`KaTeX 直接渲染该公式: ${katexOk ? 'PASS' : 'FAIL'}`);
 if (!katexOk) failed++;
 
+// ---- v2.06：页码出处 [p.12] 必须变成可点链接（点开跳 PDF 对应页）----
+function checkPageRef(name, text, expectHref, expectLabel) {
+    const out = render(text);
+    const ok = out.includes(`href="${expectHref}"`) && out.includes(`>${expectLabel}</a>`);
+    if (!ok) failed++;
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
+    console.log(`      输出: ${out.replace(/\n/g, ' ').slice(0, 160)}`);
+}
+
+console.log('');
+checkPageRef('单页出处 [p.12]', '- [p.12] 集合的定义\n- [p.13] 并集与交集', 'xueti-page:12', 'p.12');
+checkPageRef('跨页出处 [p.12-14]', '知识点 [p.12-14]：关系的性质', 'xueti-page:12', 'p.12-14');
+
+const withFormula = render('公式 [p.20]：$$E = mc^2$$');
+const bothOk = withFormula.includes('href="xueti-page:20"') && withFormula.includes('$$E = mc^2$$');
+console.log(`${bothOk ? 'PASS' : 'FAIL'}  页码链接与公式共存（互不干扰）`);
+if (!bothOk) failed++;
+
 console.log(`\n结果: ${failed === 0 ? '全部通过' : failed + ' 项失败'}`);
 process.exit(failed === 0 ? 0 : 1);
