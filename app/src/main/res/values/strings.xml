@@ -537,4 +537,20 @@
     <string name="chat_clear_confirm">确定清空本小节的对话记录吗？</string>
     <string name="chat_cleared">对话已清空</string>
     <string name="chat_first_hint">这一节哪里没看懂？可以直接问我（我会结合本节的知识点、公式和例题回答）</string>
+
+    <!-- v2.02：AI 解题显示不全修复 + 几百页 PDF 的页码映射 -->
+    <string name="textbook_outline_from_pdf">已从 PDF 目录解析出 %1$d 章 %2$d 节（页码偏移 %3$d 页），每节都对应好了页范围</string>
+    <string name="textbook_mapping_pages">正在把目录小节对应到 PDF 页码…</string>
+    <string name="section_pages_mapped">教材原文：%1$s（约 %2$d 页）· 点击可修改</string>
+    <string name="section_pages_unmapped">教材原文：尚未对应页码 · 点击手动设置</string>
+    <string name="section_grounded_pages">依据教材原文 %1$s</string>
+    <string name="page_range_title">设置本节的 PDF 页范围</string>
+    <string name="page_range_start">起始页</string>
+    <string name="page_range_end">结束页</string>
+    <string name="page_range_hint">填 PDF 的物理页号（1 起，共 %1$d 页）；讲解时只把这几页原文发给 AI，比投喂整本书更准也更省 token</string>
+    <string name="page_range_auto">自动定位</string>
+    <string name="page_range_auto_ok">已在第 %1$d 页找到本节标题，请确认结束页</string>
+    <string name="page_range_auto_failed">没能在正文里找到本节标题，请手动填写</string>
+    <string name="page_range_invalid">请填写有效页号（起始页 ≥ 1，结束页 ≥ 起始页）</string>
+    <string name="page_range_saved">页范围已保存：%1$s</string>
 </resources>

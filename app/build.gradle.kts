@@ -11,8 +11,8 @@ android {
         applicationId = "com.xueti.learn"
         minSdk = 26
         targetSdk = 34
-        versionCode = 20
-        versionName = "2.01"
+        versionCode = 21
+        versionName = "2.02"
     }
 
     buildTypes {
@@ -48,4 +48,18 @@ dependencies {
     implementation("com.tom-roush:pdfbox-android:2.0.27.0")
     // 统计页图表（柱状 / 折线 / 饼图 / 横向条形）
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    // 纯逻辑单元测试（PDF 目录解析等）
+    testImplementation("junit:junit:4.13.2")
+}
+
+// 离线自检任务：直接在 JVM 上跑 PDF 目录解析逻辑（不依赖 junit / 网络）
+tasks.register<JavaExec>("tocSelfCheck") {
+    dependsOn("compileDebugKotlin")
+    val runtime = configurations.getByName("debugRuntimeClasspath")
+    classpath = files(
+        layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes"),
+        layout.buildDirectory.dir("intermediates/javac/debug/classes"),
+        runtime
+    )
+    mainClass.set("com.xueti.learn.data.TocSelfCheck")
 }

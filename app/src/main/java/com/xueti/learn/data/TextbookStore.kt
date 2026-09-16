@@ -1,6 +1,7 @@
 package com.xueti.learn.data
 
 import android.content.Context
+import com.xueti.learn.model.PageRange
 import com.xueti.learn.model.SectionContent
 import com.xueti.learn.model.Textbook
 import org.json.JSONArray
@@ -37,6 +38,22 @@ class TextbookStore(private val context: Context) {
         write(all().filterNot { it.id == id })
         // 同时清掉这本书的 PDF 原文缓存，避免占空间
         PdfTextExtractor.deletePages(context, id)
+    }
+
+    /** 设置 / 清除某个小节对应的 PDF 页范围（v2.02） */
+    fun updatePageRange(bookId: String, sectionTitle: String, range: PageRange?) {
+        val book = get(bookId) ?: return
+        val map = book.pageMap.toMutableMap()
+        if (range == null || !range.isValid) map.remove(sectionTitle) else map[sectionTitle] = range
+        upsert(book.copy(pageMap = map))
+    }
+
+    /** 批量写入页范围映射（新建书本时用） */
+    fun updatePageRanges(bookId: String, ranges: Map<String, PageRange>) {
+        val book = get(bookId) ?: return
+        val map = book.pageMap.toMutableMap()
+        ranges.forEach { (title, range) -> if (range.isValid) map[title] = range }
+        upsert(book.copy(pageMap = map))
     }
 
     /** 保存某个小章的生成结果 */

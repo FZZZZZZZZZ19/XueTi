@@ -169,6 +169,49 @@ object DeepSeekClient {
         return ask(apiKey, model, prompt)
     }
 
+    // ---------------- 小节 → PDF 页码映射（几百页教材的关键） ----------------
+
+    /**
+     * 用「页码索引」（第 N 页 + 该页开头文字）让模型判断每个小节从哪一页开始。
+     *
+     * 相比把整本书喂给模型，这种方式 token 消耗小得多，且能覆盖几百页教材：
+     * 模型只需要在索引里找"标题实际出现在哪一页"。
+     */
+    suspend fun mapSectionsToPages(
+        apiKey: String,
+        model: String,
+        sectionTitles: List<String>,
+        pageIndex: String,
+        pageCount: Int
+    ): Result<Map<String, Int>> = runCatching {
+        if (sectionTitles.isEmpty() || pageIndex.isBlank()) return@runCatching emptyMap()
+        val prompt = buildString {
+            append("下面是教材 PDF 的**页码索引**，每行格式为「物理页号 | 该页开头的文字」：\n")
+            append("<<<INDEX\n").append(pageIndex).append("\nINDEX>>>\n\n")
+            append("请为下面每个小节找出它在 PDF 中**正文开始的物理页号**")
+            append("（用索引里的页号，不是书上的印刷页码）：\n")
+            sectionTitles.take(300).forEachIndexed { index, title ->
+                append(index + 1).append(". ").append(title).append("\n")
+            }
+            append("\n要求：\n")
+            append("1) 只输出 JSON，不要任何解释；\n")
+            append("2) 页号必须是 1 到 ").append(pageCount).append(" 之间的整数；\n")
+            append("3) 找不到的填 -1；\n")
+            append("4) 目录页里出现的标题不算，要找**正文**中该标题实际开始的那一页；\n")
+            append("5) 页号要随小节顺序递增（后面的小节页号不应小于前面的）。\n")
+            append("JSON 格式：{\"pages\":{\"小节标题\":123}}")
+        }
+        val result = chat(apiKey, model, prompt, jsonMode = true).getOrThrow()
+        val root = JSONObject(extractJson(result.text))
+        val obj = root.optJSONObject("pages") ?: return@runCatching emptyMap<String, Int>()
+        val map = mutableMapOf<String, Int>()
+        obj.keys().forEach { key ->
+            val page = obj.optInt(key, -1)
+            if (page in 1..pageCount) map[key] = page
+        }
+        map
+    }
+
     // ---------------- 可用模型列表 ----------------
 
     /** 获取当前账号可用的模型：GET /models */

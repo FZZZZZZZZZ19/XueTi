@@ -319,13 +319,48 @@ class AiSolveActivity : BaseActivity() {
                 binding.resultCard.isVisible = true
                 lastAnswer = review.answer
                 lastQuestion = question
-                FormulaRenderer.render(binding.resultWeb, review.answer, this@AiSolveActivity)
+                renderAnswer(review.answer)
                 val tokens = review.usage?.totalTokens ?: 0
                 binding.statusText.text = getString(R.string.ai_done_tokens, review.model, tokens)
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.ai_failed, error.message ?: "未知错误")
             }
+        }
+    }
+
+    /**
+     * 渲染解答：WebView 高度随内容自适应。
+     *
+     * 之前固定 360dp 且嵌在外层 ScrollView 里，既不能内部滚动又会被裁掉，
+     * 长解答就"显示不全"；现在按渲染后的真实高度撑开，交给外层统一滚动。
+     */
+    private fun renderAnswer(text: String) {
+        // 卡片从 GONE 变 VISIBLE 后再布局，避免在宽度为 0 时测量高度
+        binding.resultWeb.post {
+            FormulaRenderer.render(binding.resultWeb, text, this) { heightCss ->
+                applyAnswerHeight(heightCss)
+            }
+            // 字体 / 排版稳定后再量一次，防止首帧高度偏小
+            binding.resultWeb.postDelayed({
+                binding.resultWeb.evaluateJavascript("window.contentHeight();") { value ->
+                    val height = value?.trim('"')?.toFloatOrNull()?.toInt() ?: 0
+                    if (height > 0) applyAnswerHeight(height)
+                }
+            }, 350)
+        }
+    }
+
+    private fun applyAnswerHeight(heightCss: Int) {
+        val density = resources.displayMetrics.density
+        val minimum = (90 * density).toInt()
+        val maximum = (MAX_ANSWER_HEIGHT_DP * density).toInt()
+        val target = ((heightCss * density).toInt() + (density * 14).toInt()).coerceAtMost(maximum)
+        val height = maxOf(target, minimum)
+        val params = binding.resultWeb.layoutParams
+        if (params.height != height) {
+            params.height = height
+            binding.resultWeb.layoutParams = params
         }
     }
 
@@ -415,5 +450,10 @@ class AiSolveActivity : BaseActivity() {
 
     private fun toast(resId: Int) {
         Toast.makeText(this, resId, Toast.LENGTH_SHORT).show()
+    }
+
+    private companion object {
+        /** 解答最高撑到多少 dp（再长也由外层 ScrollView 滚动） */
+        const val MAX_ANSWER_HEIGHT_DP = 12000
     }
 }

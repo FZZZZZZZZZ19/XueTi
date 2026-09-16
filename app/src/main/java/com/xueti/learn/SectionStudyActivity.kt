@@ -21,6 +21,7 @@ import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivitySectionStudyBinding
 import com.xueti.learn.databinding.DialogEditExampleBinding
 import com.xueti.learn.databinding.DialogEditModuleBinding
+import com.xueti.learn.databinding.DialogPageRangeBinding
 import com.xueti.learn.databinding.ItemExampleQuestionBinding
 import com.xueti.learn.model.ExampleItem
 import com.xueti.learn.model.SectionContent
@@ -91,14 +92,7 @@ class SectionStudyActivity : BaseActivity() {
         FormulaRenderer.attach(binding.webFormulas, this)
 
         val book = store.get(bookId)
-        binding.contextText.text = buildString {
-            if (book != null) append("《").append(book.title).append("》")
-            if (book?.publisher?.isNotBlank() == true) append(" · ").append(book.publisher)
-            if (chapterTitle.isNotBlank()) append("\n").append(chapterTitle)
-            if (book?.hasPdf == true) {
-                append("\n").append(getString(R.string.section_grounded_by_pdf, book.sourcePdfName))
-            }
-        }
+        renderContextText(book)
 
         val saved = book?.contents?.get(sectionTitle)
         val initialStyle = saved?.let { StudyStyle.fromKey(it.styleKey) }
@@ -120,9 +114,6 @@ class SectionStudyActivity : BaseActivity() {
             }
         }
         binding.btnNewExample.setOnClickListener { showAddExampleDialog() }
-        binding.contextText.append(
-            "\n${PeakHours.statusText()}"
-        )
 
         if (saved != null) {
             render(saved)
@@ -131,6 +122,80 @@ class SectionStudyActivity : BaseActivity() {
                 StudyStyle.fromKey(saved.styleKey).label
             )
         }
+    }
+
+    /**
+     * 顶部信息：教材 / 章 / 教材 PDF + **本节对应的 PDF 页码**（点击可改）。
+     * v2.02：几百页的教材靠这个页码映射只取本节那几页原文，避免拿错内容。
+     */
+    private fun renderContextText(book: com.xueti.learn.model.Textbook?) {
+        val range = book?.pageRangeOf(sectionTitle)
+        binding.contextText.text = buildString {
+            if (book != null) append("《").append(book.title).append("》")
+            if (book?.publisher?.isNotBlank() == true) append(" · ").append(book.publisher)
+            if (chapterTitle.isNotBlank()) append("\n").append(chapterTitle)
+            if (book?.hasPdf == true) {
+                append("\n").append(getString(R.string.section_grounded_by_pdf, book.sourcePdfName))
+                append("\n")
+                append(
+                    if (range != null) {
+                        getString(R.string.section_pages_mapped, range.label, range.pageCount)
+                    } else {
+                        getString(R.string.section_pages_unmapped)
+                    }
+                )
+            }
+            append("\n").append(PeakHours.statusText())
+        }
+        binding.contextText.setOnClickListener {
+            if (book?.hasPdf == true) showPageRangeDialog(range)
+        }
+    }
+
+    /** 手动设置 / 修正本节的 PDF 页范围（自动定位不准时用） */
+    private fun showPageRangeDialog(current: com.xueti.learn.model.PageRange?) {
+        val book = store.get(bookId) ?: return
+        val view = DialogPageRangeBinding.inflate(layoutInflater)
+        view.etStart.setText(current?.start?.toString().orEmpty())
+        view.etEnd.setText(current?.end?.toString().orEmpty())
+        view.pageRangeHint.text = getString(R.string.page_range_hint, book.sourcePdfPages)
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.page_range_title)
+            .setView(view.root)
+            .setPositiveButton(R.string.goal_save, null)
+            .setNegativeButton(R.string.cancel, null)
+            .setNeutralButton(R.string.page_range_auto, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
+                val pages = PdfTextExtractor.loadPages(this, bookId)
+                val found = if (pages.isEmpty()) null else {
+                    PdfTextExtractor.findSectionStart(pages, sectionTitle)
+                }
+                if (found == null) {
+                    toast(R.string.page_range_auto_failed)
+                } else {
+                    view.etStart.setText(found.toString())
+                    view.etEnd.setText((found + 7).coerceAtMost(maxOf(pages.size, found)).toString())
+                    toast(getString(R.string.page_range_auto_ok, found))
+                }
+            }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val start = view.etStart.text?.toString()?.trim()?.toIntOrNull()
+                val end = view.etEnd.text?.toString()?.trim()?.toIntOrNull()
+                if (start == null || end == null || start < 1 || end < start) {
+                    view.startLayout.error = getString(R.string.page_range_invalid)
+                    return@setOnClickListener
+                }
+                store.updatePageRange(bookId, sectionTitle, com.xueti.learn.model.PageRange(start, end))
+                toast(getString(R.string.page_range_saved, "$start–$end"))
+                renderContextText(store.get(bookId))
+                dialog.dismiss()
+            }
+        }
+        dialog.show()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -206,12 +271,13 @@ class SectionStudyActivity : BaseActivity() {
         val book = store.get(bookId)
         val style = currentStyle()
 
-        // 有教材 PDF：按小节标题定位原文（严格接地）；再带上相关错题本易错点
+        // v2.02：优先用「本节对应的 PDF 页码」取原文；老书没有映射时退回按标题定位
         val pdfPages = PdfTextExtractor.loadPages(this, bookId)
-        val sourceText = if (pdfPages.isNotEmpty()) {
-            PdfTextExtractor.sectionExcerpt(pdfPages, sectionTitle).ifBlank { null }
-        } else {
-            null
+        val range = book?.pageRangeOf(sectionTitle)
+        val sourceText = when {
+            pdfPages.isEmpty() -> null
+            range != null -> PdfTextExtractor.pagesInRange(pdfPages, range).ifBlank { null }
+            else -> PdfTextExtractor.sectionExcerpt(pdfPages, sectionTitle).ifBlank { null }
         }
         val focusPoints = mistakeStore
             .buildFocusPrompt(limit = 8, maxChars = 140, keyword = sectionTitle)
@@ -239,7 +305,13 @@ class SectionStudyActivity : BaseActivity() {
                 binding.statusText.text = buildString {
                     append(getString(R.string.section_generated_tokens, style.label, tokens))
                     if (sourceText != null) {
-                        append(" · ").append(getString(R.string.section_grounded_short))
+                        append(" · ").append(
+                            if (range != null) {
+                                getString(R.string.section_grounded_pages, range.label)
+                            } else {
+                                getString(R.string.section_grounded_short)
+                            }
+                        )
                     }
                     if (focusPoints != null) {
                         append(" · ").append(getString(R.string.section_with_mistakes))

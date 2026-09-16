@@ -139,6 +139,28 @@ data class SectionContent(
     }
 }
 
+/** 某个小节在教材 PDF 中的**物理页范围**（1 起，含首含尾） */
+data class PageRange(val start: Int, val end: Int) {
+    val isValid: Boolean get() = start >= 1 && end >= start
+    val label: String get() = if (start == end) "p.$start" else "p.$start–$end"
+    val pageCount: Int get() = if (isValid) end - start + 1 else 0
+
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("start", start)
+        put("end", end)
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject): PageRange = PageRange(
+            start = o.optInt("start", 0),
+            end = o.optInt("end", 0)
+        )
+    }
+}
+
+/** 目录解析出的一个条目（章 / 节 + 起始页） */
+data class TocEntry(val title: String, val page: Int, val level: Int)
+
 /** 一本书（目录 + 已生成的小章内容） */
 data class Textbook(
     val id: String,
@@ -152,12 +174,17 @@ data class Textbook(
     /** 已上传教材 PDF 的文件名（空表示没有 PDF，生成时靠模型知识） */
     val sourcePdfName: String = "",
     /** 该 PDF 的页数 */
-    val sourcePdfPages: Int = 0
+    val sourcePdfPages: Int = 0,
+    /** 小节标题 → PDF 物理页范围（v2.02：讲解只取对应页的原文） */
+    val pageMap: Map<String, PageRange> = emptyMap()
 ) {
     val chapterCount: Int get() = chapters.size
     val sectionCount: Int get() = chapters.sumOf { it.sections.size }
     val studiedCount: Int get() = contents.size
     val hasPdf: Boolean get() = sourcePdfName.isNotBlank()
+    val mappedCount: Int get() = pageMap.size
+
+    fun pageRangeOf(sectionTitle: String): PageRange? = pageMap[sectionTitle]
 
     fun toJson(): JSONObject = JSONObject().apply {
         put("id", id)
@@ -174,6 +201,9 @@ data class Textbook(
         val contentObj = JSONObject()
         contents.forEach { (key, value) -> contentObj.put(key, value.toJson()) }
         put("contents", contentObj)
+        val pageObj = JSONObject()
+        pageMap.forEach { (key, value) -> pageObj.put(key, value.toJson()) }
+        put("pageMap", pageObj)
     }
 
     companion object {
@@ -183,6 +213,14 @@ data class Textbook(
             val contents = mutableMapOf<String, SectionContent>()
             contentObj.keys().forEach { key ->
                 contentObj.optJSONObject(key)?.let { contents[key] = SectionContent.fromJson(it) }
+            }
+            val pageObj = o.optJSONObject("pageMap") ?: JSONObject()
+            val pageMap = mutableMapOf<String, PageRange>()
+            pageObj.keys().forEach { key ->
+                pageObj.optJSONObject(key)?.let {
+                    val range = PageRange.fromJson(it)
+                    if (range.isValid) pageMap[key] = range
+                }
             }
             return Textbook(
                 id = o.optString("id"),
@@ -194,7 +232,8 @@ data class Textbook(
                 chapters = (0 until arr.length()).map { Chapter.fromJson(arr.getJSONObject(it)) },
                 contents = contents,
                 sourcePdfName = o.optString("sourcePdfName"),
-                sourcePdfPages = o.optInt("sourcePdfPages", 0)
+                sourcePdfPages = o.optInt("sourcePdfPages", 0),
+                pageMap = pageMap
             )
         }
     }

@@ -12,16 +12,22 @@ import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.MistakeStore
+import com.xueti.learn.data.PdfOutlineParser
 import com.xueti.learn.data.PdfTextExtractor
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.TextbookStore
 import com.xueti.learn.data.UsageStore
 import com.xueti.learn.databinding.ActivityTextbookCreateBinding
+import com.xueti.learn.model.Chapter
+import com.xueti.learn.model.PageRange
+import com.xueti.learn.model.Section
 import com.xueti.learn.model.StudyStyle
 import com.xueti.learn.model.Textbook
 import com.xueti.learn.util.ImageListController
 import com.xueti.learn.util.PeakHours
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -213,6 +219,53 @@ class TextbookCreateActivity : BaseActivity() {
             else -> getString(R.string.textbook_generating)
         }
         lifecycleScope.launch {
+            // ① 先本地解析 PDF 目录：最准、不花 token，还能直接得到每节的页范围
+            val parsed = if (pdfPages.isNotEmpty()) {
+                withContext(Dispatchers.Default) { PdfOutlineParser.parse(pdfPages) }
+            } else {
+                null
+            }
+            val localOutline = parsed?.let { PdfOutlineParser.buildOutline(it, pdfPages.size) }
+            if (localOutline != null && localOutline.isNotEmpty()) {
+                val bookId = "book_${System.currentTimeMillis()}"
+                PdfTextExtractor.savePages(this@TextbookCreateActivity, bookId, pdfPages)
+                val chapters = localOutline.map { (chapterTitle, sections) ->
+                    Chapter(
+                        id = chapterTitle,
+                        title = chapterTitle,
+                        sections = sections.map { Section(id = it.first, title = it.first) }
+                    )
+                }
+                val ranges = localOutline.flatMap { it.second }
+                    .associate { it.first to PageRange(it.second, it.third) }
+                val book = Textbook(
+                    id = bookId,
+                    title = title,
+                    publisher = publisher,
+                    edition = edition,
+                    styleKey = style.key,
+                    createdAt = System.currentTimeMillis(),
+                    chapters = chapters,
+                    sourcePdfName = pdfName,
+                    sourcePdfPages = pdfPageCount,
+                    pageMap = ranges
+                )
+                store.upsert(book)
+                setLoading(false)
+                val sectionCount = chapters.sumOf { it.sections.size }
+                toast(
+                    getString(
+                        R.string.textbook_outline_from_pdf,
+                        chapters.size,
+                        sectionCount,
+                        parsed?.pageOffset ?: 0
+                    )
+                )
+                openBook(book.id)
+                return@launch
+            }
+
+            // ② 回退：让 AI 依据 PDF 原文/书名生成目录，再用页码索引做页映射
             val result = DeepSeekClient.generateOutline(
                 apiKey = apiKey,
                 model = settings.aiModel,
@@ -244,6 +297,20 @@ class TextbookCreateActivity : BaseActivity() {
                     sourcePdfPages = if (pdfPages.isNotEmpty()) pdfPageCount else 0
                 )
                 store.upsert(book)
+
+                // 目录出来后给每个小节定位 PDF 页范围（本地标题定位 + 页码索引交给 AI 兜底）
+                if (pdfPages.isNotEmpty()) {
+                    binding.statusText.text = getString(R.string.textbook_mapping_pages)
+                    val ranges = mapSectionPages(
+                        apiKey = apiKey,
+                        model = settings.aiModel,
+                        titles = outline.chapters.flatMap { it.sections.map { s -> s.title } },
+                        pages = pdfPages,
+                        skipPages = parsed?.tocPages?.toSet().orEmpty()
+                    )
+                    if (ranges.isNotEmpty()) store.updatePageRanges(bookId, ranges)
+                }
+
                 val sections = outline.chapters.sumOf { it.sections.size }
                 toast(
                     getString(
@@ -253,16 +320,71 @@ class TextbookCreateActivity : BaseActivity() {
                         outline.usage?.totalTokens ?: 0
                     )
                 )
-                startActivity(
-                    Intent(this@TextbookCreateActivity, TextbookDetailActivity::class.java)
-                        .putExtra(TextbookDetailActivity.EXTRA_BOOK_ID, book.id)
-                )
-                finish()
+                openBook(book.id)
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.textbook_generate_failed, error.message ?: "未知错误")
             }
         }
+    }
+
+    private fun openBook(bookId: String) {
+        startActivity(
+            Intent(this@TextbookCreateActivity, TextbookDetailActivity::class.java)
+                .putExtra(TextbookDetailActivity.EXTRA_BOOK_ID, bookId)
+        )
+        finish()
+    }
+
+    /**
+     * 给每个小节确定 PDF 页范围：
+     * 先在正文里按标题定位（跳过目录页），命中不足一半时再用「页码索引」请 AI 帮忙；
+     * 每节的结束页 = 下一节起始页 - 1，最后一节到全书末尾。
+     */
+    private suspend fun mapSectionPages(
+        apiKey: String,
+        model: String,
+        titles: List<String>,
+        pages: List<String>,
+        skipPages: Set<Int>
+    ): Map<String, PageRange> {
+        if (titles.isEmpty() || pages.isEmpty()) return emptyMap()
+
+        val local = mutableMapOf<String, Int>()
+        titles.forEach { title ->
+            PdfTextExtractor.findSectionStart(pages, title, skipPages)?.let { local[title] = it }
+        }
+
+        val ai = if (local.size * 2 < titles.size && apiKey.isNotBlank()) {
+            DeepSeekClient.mapSectionsToPages(
+                apiKey = apiKey,
+                model = model,
+                sectionTitles = titles,
+                pageIndex = withContext(Dispatchers.Default) {
+                    PdfTextExtractor.pageIndexDigest(pages)
+                },
+                pageCount = pages.size
+            ).getOrDefault(emptyMap())
+        } else {
+            emptyMap()
+        }
+
+        val starts = mutableMapOf<String, Int>()
+        titles.forEach { title ->
+            val hit = local[title] ?: ai[title] ?: ai.entries.firstOrNull { (key, _) ->
+                key.replace(Regex("\\s+"), "") == title.replace(Regex("\\s+"), "")
+            }?.value
+            if (hit != null) starts[title] = hit
+        }
+
+        val sorted = starts.entries.sortedBy { it.value }
+        val result = mutableMapOf<String, PageRange>()
+        sorted.forEachIndexed { index, (title, start) ->
+            val nextStart = sorted.getOrNull(index + 1)?.value ?: (pages.size + 1)
+            val end = (nextStart - 1).coerceAtLeast(start).coerceAtMost(pages.size)
+            result[title] = PageRange(start, end)
+        }
+        return result
     }
 
     private fun currentStyle(): StudyStyle =
