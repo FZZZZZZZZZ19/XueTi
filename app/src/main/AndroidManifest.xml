@@ -54,6 +54,10 @@
             android:windowSoftInputMode="adjustResize" />
 
         <activity
+            android:name=".PdfPreviewActivity"
+            android:exported="false" />
+
+        <activity
             android:name=".TextbookListActivity"
             android:exported="false" />
 

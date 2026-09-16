@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.xueti.learn.adapter.ChapterAdapter
 import com.xueti.learn.adapter.ChapterRow
 import com.xueti.learn.base.BaseActivity
+import com.xueti.learn.data.PdfFileStore
 import com.xueti.learn.data.TextbookStore
 import com.xueti.learn.databinding.ActivityTextbookDetailBinding
 import com.xueti.learn.model.StudyStyle
@@ -44,12 +45,36 @@ class TextbookDetailActivity : BaseActivity() {
         render()
     }
 
+    override fun onCreateOptionsMenu(menu: android.view.Menu): Boolean {
+        menuInflater.inflate(R.menu.menu_book_detail, menu)
+        return true
+    }
+
     override fun onOptionsItemSelected(item: android.view.MenuItem): Boolean {
-        if (item.itemId == android.R.id.home) {
-            finish()
-            return true
+        return when (item.itemId) {
+            android.R.id.home -> {
+                finish()
+                true
+            }
+            R.id.action_book_pdf_preview -> {
+                // v2.04：预览教材 PDF（翻页看内容，章节页里可直接标记起始页）
+                if (!PdfFileStore.hasFile(this, bookId)) {
+                    android.widget.Toast.makeText(
+                        this,
+                        getString(R.string.pdf_preview_no_file),
+                        android.widget.Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    startActivity(
+                        Intent(this, PdfPreviewActivity::class.java)
+                            .putExtra(PdfPreviewActivity.EXTRA_BOOK_ID, bookId)
+                            .putExtra(PdfPreviewActivity.EXTRA_START_PAGE, 1)
+                    )
+                }
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        return super.onOptionsItemSelected(item)
     }
 
     private fun render() {

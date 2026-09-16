@@ -36,8 +36,9 @@ class TextbookStore(private val context: Context) {
 
     fun delete(id: String) {
         write(all().filterNot { it.id == id })
-        // 同时清掉这本书的 PDF 原文缓存，避免占空间
+        // 同时清掉这本书的 PDF 原文缓存与 PDF 原文件，避免占空间
         PdfTextExtractor.deletePages(context, id)
+        PdfFileStore.delete(context, id)
     }
 
     /** 设置 / 清除某个小节对应的 PDF 页范围（v2.02） */

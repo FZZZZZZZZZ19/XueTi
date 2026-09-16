@@ -12,6 +12,7 @@ import androidx.lifecycle.lifecycleScope
 import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.MistakeStore
+import com.xueti.learn.data.PdfFileStore
 import com.xueti.learn.data.PdfOutlineParser
 import com.xueti.learn.data.PdfTextExtractor
 import com.xueti.learn.data.SettingsStore
@@ -51,6 +52,9 @@ class TextbookCreateActivity : BaseActivity() {
     private var pdfName: String = ""
     private var pdfPageCount: Int = 0
     private var pdfPages: List<String> = emptyList()
+
+    /** PDF 原文件是否已保存（v2.04：保存后才能在小节页预览翻页） */
+    private var pdfFileStaged: Boolean = false
 
     private val pickPdf =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -107,21 +111,32 @@ class TextbookCreateActivity : BaseActivity() {
         binding.pdfStatus.text = getString(R.string.textbook_pdf_reading)
         binding.btnPickPdf.isEnabled = false
         lifecycleScope.launch {
+            // 先复制一份原文件（v2.04：预览/翻页找页码要用到 PDF 本身）
+            val staged = withContext(Dispatchers.IO) {
+                PdfFileStore.clearStaged(this@TextbookCreateActivity)
+                PdfFileStore.stageFromUri(this@TextbookCreateActivity, uri)
+            }
             val result = PdfTextExtractor.extract(this@TextbookCreateActivity, uri)
             binding.btnPickPdf.isEnabled = true
             result.onSuccess { extracted ->
                 pdfPages = extracted.pages
                 pdfPageCount = extracted.pageCount
                 pdfName = queryDisplayName(uri) ?: "教材.pdf"
+                pdfFileStaged = staged != null
                 binding.btnRemovePdf.isVisible = true
                 renderPdfStatus()
                 if (!extracted.hasText) {
                     toast(getString(R.string.textbook_pdf_no_text, pdfName))
                 }
+                if (staged == null) {
+                    toast(R.string.textbook_pdf_copy_failed)
+                }
             }.onFailure { error ->
                 pdfPages = emptyList()
                 pdfPageCount = 0
                 pdfName = ""
+                pdfFileStaged = false
+                withContext(Dispatchers.IO) { PdfFileStore.clearStaged(this@TextbookCreateActivity) }
                 binding.btnRemovePdf.isVisible = false
                 binding.pdfStatus.text =
                     getString(R.string.textbook_pdf_failed, error.message ?: "未知错误")
@@ -133,18 +148,25 @@ class TextbookCreateActivity : BaseActivity() {
         pdfPages = emptyList()
         pdfPageCount = 0
         pdfName = ""
+        pdfFileStaged = false
+        PdfFileStore.clearStaged(this)
         binding.btnRemovePdf.isVisible = false
         renderPdfStatus()
     }
 
     private fun renderPdfStatus() {
         binding.pdfStatus.text = if (pdfPages.isNotEmpty()) {
-            getString(
+            val base = getString(
                 R.string.textbook_pdf_ready,
                 pdfName,
                 pdfPageCount,
                 pdfPages.sumOf { it.length }
             )
+            if (pdfFileStaged) {
+                base + getString(R.string.textbook_pdf_preview_ready)
+            } else {
+                base + getString(R.string.textbook_pdf_no_preview)
+            }
         } else {
             getString(R.string.textbook_pdf_none)
         }
@@ -229,6 +251,10 @@ class TextbookCreateActivity : BaseActivity() {
             if (localOutline != null && localOutline.isNotEmpty()) {
                 val bookId = "book_${System.currentTimeMillis()}"
                 PdfTextExtractor.savePages(this@TextbookCreateActivity, bookId, pdfPages)
+                // v2.04：把 PDF 原文件归位，之后可在小节页预览翻页找页码
+                withContext(Dispatchers.IO) {
+                    PdfFileStore.commitStaged(this@TextbookCreateActivity, bookId)
+                }
                 val chapters = localOutline.map { (chapterTitle, sections) ->
                     Chapter(
                         id = chapterTitle,
@@ -284,6 +310,10 @@ class TextbookCreateActivity : BaseActivity() {
                 val bookId = "book_${System.currentTimeMillis()}"
                 if (pdfPages.isNotEmpty()) {
                     PdfTextExtractor.savePages(this@TextbookCreateActivity, bookId, pdfPages)
+                    // v2.04：PDF 原文件归位，供小节页预览
+                    withContext(Dispatchers.IO) {
+                        PdfFileStore.commitStaged(this@TextbookCreateActivity, bookId)
+                    }
                 }
                 val book = Textbook(
                     id = bookId,

@@ -14,6 +14,7 @@ import com.xueti.learn.ai.DeepSeekClient
 import com.xueti.learn.base.BaseActivity
 import com.xueti.learn.data.CuratedStore
 import com.xueti.learn.data.MistakeStore
+import com.xueti.learn.data.PdfFileStore
 import com.xueti.learn.data.PdfTextExtractor
 import com.xueti.learn.data.SettingsStore
 import com.xueti.learn.data.TextbookStore
@@ -77,6 +78,43 @@ class SectionStudyActivity : BaseActivity() {
         ) { uris ->
             if (!uris.isNullOrEmpty()) extractQuestionFromImages(uris)
         }
+
+    /** PDF 预览返回：把用户标记的页号写进页范围 */
+    private val pdfPreviewLauncher =
+        registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+        ) { result ->
+            if (result.resultCode != android.app.Activity.RESULT_OK) return@registerForActivityResult
+            val data = result.data ?: return@registerForActivityResult
+            val start = data.getIntExtra(PdfPreviewActivity.EXTRA_RESULT_START, 0)
+            val end = data.getIntExtra(PdfPreviewActivity.EXTRA_RESULT_END, 0)
+            if (start <= 0 && end <= 0) return@registerForActivityResult
+
+            val effectiveStart = if (start > 0) start else end
+            // 只标了一头时：结束页用弹窗里已填的值，没填就按 8 页估一个
+            val existingEnd = pendingRangeFields?.second?.text?.toString()?.trim()?.toIntOrNull()
+            val effectiveEnd = when {
+                end > 0 -> end
+                existingEnd != null && existingEnd >= effectiveStart -> existingEnd
+                else -> effectiveStart + 7
+            }
+            val finalStart = effectiveStart
+            val finalEnd = maxOf(effectiveEnd, finalStart)
+            store.updatePageRange(
+                bookId,
+                sectionTitle,
+                com.xueti.learn.model.PageRange(finalStart, finalEnd)
+            )
+            renderContextText(store.get(bookId))
+            pendingRangeFields?.let { fields ->
+                fields.first.setText(finalStart.toString())
+                fields.second.setText(finalEnd.toString())
+            }
+            toast(getString(R.string.page_range_saved, "$finalStart–$finalEnd"))
+        }
+
+    /** 页码弹窗里正在编辑的两个输入框（预览返回时要回填） */
+    private var pendingRangeFields: Pair<android.widget.EditText, android.widget.EditText>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -159,6 +197,8 @@ class SectionStudyActivity : BaseActivity() {
         view.etStart.setText(current?.start?.toString().orEmpty())
         view.etEnd.setText(current?.end?.toString().orEmpty())
         view.pageRangeHint.text = getString(R.string.page_range_hint, book.sourcePdfPages)
+        view.btnPreviewPdf.isVisible = PdfFileStore.hasFile(this, bookId)
+        pendingRangeFields = view.etStart to view.etEnd
 
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.page_range_title)
@@ -167,6 +207,13 @@ class SectionStudyActivity : BaseActivity() {
             .setNegativeButton(R.string.cancel, null)
             .setNeutralButton(R.string.page_range_auto, null)
             .create()
+
+        view.btnPreviewPdf.setOnClickListener {
+            val start = view.etStart.text?.toString()?.trim()?.toIntOrNull() ?: 1
+            openPdfPreview(start)
+        }
+
+        dialog.setOnDismissListener { pendingRangeFields = null }
 
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener {
@@ -198,6 +245,29 @@ class SectionStudyActivity : BaseActivity() {
         dialog.show()
     }
 
+    /** 打开 PDF 预览；未保存 PDF 文件时给出明确提示 */
+    private fun openPdfPreview(startPage: Int) {
+        if (!PdfFileStore.hasFile(this, bookId)) {
+            toast(R.string.pdf_preview_no_file)
+            return
+        }
+        pdfPreviewLauncher.launch(
+            Intent(this, PdfPreviewActivity::class.java)
+                .putExtra(PdfPreviewActivity.EXTRA_BOOK_ID, bookId)
+                .putExtra(PdfPreviewActivity.EXTRA_START_PAGE, startPage.coerceAtLeast(1))
+        )
+    }
+
+    /** 预览时的初始页：已保存的起始页 → 自动定位 → 第 1 页 */
+    private fun currentPageForPreview(): Int {
+        store.get(bookId)?.pageRangeOf(sectionTitle)?.let { return it.start }
+        val pages = PdfTextExtractor.loadPages(this, bookId)
+        if (pages.isNotEmpty()) {
+            PdfTextExtractor.findSectionStart(pages, sectionTitle)?.let { return it }
+        }
+        return 1
+    }
+
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.menu_section, menu)
         return true
@@ -213,6 +283,10 @@ class SectionStudyActivity : BaseActivity() {
                     Intent(this, CuratedActivity::class.java)
                         .putExtra(CuratedActivity.EXTRA_BOOK_ID, bookId)
                 )
+                true
+            }
+            R.id.action_pdf_preview -> {
+                openPdfPreview(currentPageForPreview())
                 true
             }
             R.id.action_chat -> {

@@ -575,4 +575,30 @@
     <string name="reminder_reschedule_action">点击重排</string>
     <string name="reminder_rescheduled">已重新排定未来 7 天的提醒闹钟</string>
     <string name="reminder_reschedule_disabled">请先打开「每日提醒」开关</string>
+
+    <!-- v2.04：PDF 预览（自己翻页找起始页） -->
+    <string name="pdf_preview_title">教材 PDF 预览</string>
+    <string name="pdf_preview_hint">翻到该小节开始的那一页，点底部「设为起始页」；也可以再翻到结束页点「设为结束页」，返回即自动填入</string>
+    <string name="pdf_preview_pick">预览 PDF 选页</string>
+    <string name="pdf_preview_no_file">这本书没有保存 PDF 文件（只保存了文字），请重新上传一次 PDF 才能预览</string>
+    <string name="pdf_prev">上一页</string>
+    <string name="pdf_next">下一页</string>
+    <string name="pdf_jump_hint">跳转页号</string>
+    <string name="pdf_page_badge">第 %1$d / %2$d 页</string>
+    <string name="pdf_invalid_page">请输入正确的页号</string>
+    <string name="pdf_render_failed">这一页渲染失败，换一页试试</string>
+    <string name="pdf_mark_start">设为起始页</string>
+    <string name="pdf_zoom_in">放大</string>
+    <string name="pdf_zoom_reset">适应宽度</string>
+    <string name="pdf_mark_end">设为结束页</string>
+    <string name="pdf_mark_start_done">起始页：%1$d（点击可改）</string>
+    <string name="pdf_mark_end_done">结束页：%1$d（点击可改）</string>
+    <string name="pdf_marked_start">已标记第 %1$d 页为起始页</string>
+    <string name="pdf_marked_end">已标记第 %1$d 页为结束页</string>
+    <string name="pdf_marked_only_start">已标记起始页：第 %1$d 页（可继续翻页标记结束页）</string>
+    <string name="pdf_marked_only_end">已标记结束页：第 %1$d 页（可继续翻页标记起始页）</string>
+    <string name="pdf_marked_both">已标记：第 %1$d – %2$d 页，返回即填入</string>
+    <string name="textbook_pdf_preview_ready">（已保存 PDF，可在小节页预览翻页找页码）</string>
+    <string name="textbook_pdf_no_preview">（未保存 PDF 文件，无法预览，可重新上传）</string>
+    <string name="textbook_pdf_copy_failed">PDF 已解析文字，但原文件保存失败，预览功能将不可用</string>
 </resources>
