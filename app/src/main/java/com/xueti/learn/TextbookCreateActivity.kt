@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -287,7 +288,7 @@ class TextbookCreateActivity : BaseActivity() {
                         parsed?.pageOffset ?: 0
                     )
                 )
-                openBook(book.id)
+                openBookAskingPageMap(book.id)
                 return@launch
             }
 
@@ -350,7 +351,7 @@ class TextbookCreateActivity : BaseActivity() {
                         outline.usage?.totalTokens ?: 0
                     )
                 )
-                openBook(book.id)
+                if (pdfPages.isNotEmpty()) openBookAskingPageMap(book.id) else openBook(book.id)
             }.onFailure { error ->
                 binding.statusText.text =
                     getString(R.string.textbook_generate_failed, error.message ?: "未知错误")
@@ -358,12 +359,30 @@ class TextbookCreateActivity : BaseActivity() {
         }
     }
 
-    private fun openBook(bookId: String) {
+    private fun openBook(bookId: String, alsoPageMap: Boolean = false) {
         startActivity(
             Intent(this@TextbookCreateActivity, TextbookDetailActivity::class.java)
                 .putExtra(TextbookDetailActivity.EXTRA_BOOK_ID, bookId)
         )
+        if (alsoPageMap) {
+            // 书上有 PDF：直接叠一层「划分章节页数」，返回时回到目录页
+            startActivity(
+                Intent(this@TextbookCreateActivity, PageMapActivity::class.java)
+                    .putExtra(PageMapActivity.EXTRA_BOOK_ID, bookId)
+            )
+        }
         finish()
+    }
+
+    /** 带 PDF 建好书后，问一句要不要马上去手动划分页数（v2.05） */
+    private fun openBookAskingPageMap(bookId: String) {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.page_map_title)
+            .setMessage(R.string.book_pdf_added_ask_map)
+            .setCancelable(false)
+            .setPositiveButton(R.string.confirm) { _, _ -> openBook(bookId, alsoPageMap = true) }
+            .setNegativeButton(R.string.cancel) { _, _ -> openBook(bookId) }
+            .show()
     }
 
     /**

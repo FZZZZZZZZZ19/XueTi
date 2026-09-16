@@ -57,6 +57,12 @@ class TextbookStore(private val context: Context) {
         upsert(book.copy(pageMap = map))
     }
 
+    /** 整体替换页范围映射（「清空」用：传空 map 会真正清掉） */
+    fun replacePageRanges(bookId: String, ranges: Map<String, PageRange>) {
+        val book = get(bookId) ?: return
+        upsert(book.copy(pageMap = ranges.filterValues { it.isValid }))
+    }
+
     /** 保存某个小章的生成结果 */
     fun saveContent(textbookId: String, sectionId: String, content: SectionContent) {
         val textbook = get(textbookId) ?: return

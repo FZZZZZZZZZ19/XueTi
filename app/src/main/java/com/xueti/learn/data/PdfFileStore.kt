@@ -2,6 +2,8 @@ package com.xueti.learn.data
 
 import android.content.Context
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -62,4 +64,54 @@ object PdfFileStore {
     fun delete(context: Context, bookId: String) {
         runCatching { file(context, bookId).delete() }
     }
+
+    /** 给已存在的书补上 / 更换 PDF 原文件（v2.05：老书也能后补 PDF） */
+    fun replaceFromUri(context: Context, bookId: String, uri: Uri): Boolean = runCatching {
+        val target = file(context, bookId)
+        context.contentResolver.openInputStream(uri)?.use { input ->
+            target.outputStream().use { output -> input.copyTo(output) }
+        } ?: return false
+        target.exists() && target.length() > 0
+    }.getOrDefault(false)
+}
+
+/**
+ * 给一本书导入 / 更换教材 PDF（v2.05）。
+ *
+ * 抽文字与保存原文件都在这里做，书本目录页与「划分章节页数」页共用：
+ * 原本没有 PDF 的书也能后来补上，补完再手动划分页范围。
+ */
+object PdfBookImporter {
+
+    data class Imported(val pageCount: Int, val charCount: Int, val hasText: Boolean, val fileSaved: Boolean)
+
+    suspend fun import(context: Context, store: TextbookStore, bookId: String, uri: Uri): Result<Imported> =
+        runCatching {
+            val extracted = PdfTextExtractor.extract(context, uri).getOrThrow()
+            PdfTextExtractor.savePages(context, bookId, extracted.pages)
+            val fileSaved = withContext(Dispatchers.IO) {
+                PdfFileStore.replaceFromUri(context, bookId, uri)
+            }
+            val name = queryDisplayName(context, uri) ?: "教材.pdf"
+            val book = store.get(bookId) ?: error("书本不存在")
+            store.upsert(
+                book.copy(
+                    sourcePdfName = name,
+                    sourcePdfPages = extracted.pageCount
+                )
+            )
+            Imported(
+                pageCount = extracted.pageCount,
+                charCount = extracted.charCount,
+                hasText = extracted.hasText,
+                fileSaved = fileSaved
+            )
+        }
+
+    fun queryDisplayName(context: Context, uri: Uri): String? = runCatching {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+            if (index >= 0 && cursor.moveToFirst()) cursor.getString(index) else null
+        }
+    }.getOrNull()
 }
